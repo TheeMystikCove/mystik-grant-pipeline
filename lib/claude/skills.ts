@@ -1,9 +1,10 @@
 import { readFileSync, existsSync } from "fs";
 import path from "path";
 
-const rawSkillsDir =
+const rawSkillsDir = (
   process.env.SKILLS_DIR ??
-  path.resolve(process.cwd(), "../Mystik Grant Pipeline/skills");
+  path.resolve(process.cwd(), "../Mystik Grant Pipeline/skills")
+).trim();
 
 // Resolve relative paths against cwd so "./skills" works on Vercel
 const SKILLS_DIR = path.isAbsolute(rawSkillsDir)
