@@ -57,263 +57,287 @@ export default async function DashboardPage() {
       <main
         style={{
           flex: 1,
-          padding: "1.5rem",
+          padding: "1.75rem",
           overflowY: "auto",
           display: "flex",
           flexDirection: "column",
           gap: "1.5rem",
         }}
       >
-        {/* Stat row */}
+        {/* Sovereign stat row */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem" }}>
           {[
-            { label: "Active Opportunities", value: opportunities.length, color: "var(--info)" },
-            { label: "Active Proposals", value: proposals.length, color: "var(--accent)" },
-            { label: "Agent Runs (7d)", value: runCounts.total, color: "var(--text-secondary)" },
-            { label: "Errors (7d)", value: runCounts.error, color: runCounts.error > 0 ? "var(--danger)" : "var(--success)" },
+            { label: "Active Opportunities", value: opportunities.length, color: "var(--info)", icon: "◎" },
+            { label: "Active Proposals", value: proposals.length, color: "var(--accent)", icon: "◈" },
+            { label: "Agent Runs — 7d", value: runCounts.total, color: "var(--text-secondary)", icon: "◇" },
+            {
+              label: "Errors — 7d",
+              value: runCounts.error,
+              color: runCounts.error > 0 ? "var(--danger)" : "var(--success)",
+              icon: "◆",
+            },
           ].map((stat) => (
             <div
               key={stat.label}
               style={{
                 background: "var(--surface)",
                 border: "1px solid var(--border)",
-                borderRadius: "10px",
-                padding: "1rem 1.25rem",
+                borderTop: "1px solid var(--border-accent)",
+                borderRadius: "2px",
+                padding: "1.125rem 1.375rem",
+                position: "relative",
+                overflow: "hidden",
               }}
             >
-              <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.375rem" }}>
+              {/* Corner ornament */}
+              <span
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  top: "0.625rem",
+                  right: "0.75rem",
+                  fontSize: "0.4375rem",
+                  color: stat.color,
+                  opacity: 0.35,
+                  letterSpacing: "0.1em",
+                }}
+              >
+                {stat.icon}
+              </span>
+              <p
+                style={{
+                  fontSize: "0.5625rem",
+                  color: "var(--text-muted)",
+                  marginBottom: "0.5rem",
+                  letterSpacing: "0.09em",
+                  textTransform: "uppercase",
+                  fontFamily: "Inter, system-ui, sans-serif",
+                }}
+              >
                 {stat.label}
               </p>
-              <p style={{ fontSize: "1.5rem", fontWeight: 700, color: stat.color, lineHeight: 1 }}>
+              <p
+                style={{
+                  fontFamily: "Georgia, serif",
+                  fontSize: "1.75rem",
+                  fontWeight: 700,
+                  color: stat.color,
+                  lineHeight: 1,
+                  letterSpacing: "-0.01em",
+                }}
+              >
                 {stat.value}
               </p>
             </div>
           ))}
         </div>
 
-        {/* Main content grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem", flex: 1 }}>
+        {/* Main two-column grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
           {/* Upcoming Deadlines */}
-          <section
-            style={{
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: "10px",
-              overflow: "hidden",
-            }}
+          <SanctumSection
+            title="Upcoming Deadlines"
+            viewHref="/opportunities"
+            empty={opportunities.length === 0}
+            emptyMessage="No active opportunities are being pursued."
           >
-            <div
-              style={{
-                padding: "1rem 1.25rem",
-                borderBottom: "1px solid var(--border-muted)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <h2 style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
-                Upcoming Deadlines
-              </h2>
-              <a
-                href="/opportunities"
-                style={{ fontSize: "0.75rem", color: "var(--accent)", textDecoration: "none" }}
-              >
-                View all →
-              </a>
-            </div>
-
-            {opportunities.length === 0 ? (
-              <EmptyState message="No active opportunities tracked yet." />
-            ) : (
-              <ul style={{ listStyle: "none" }}>
-                {opportunities.map((opp, i) => {
-                  const days = daysUntil(opp.deadline);
-                  const urgent = days != null && days <= 14;
-                  return (
-                    <li
-                      key={opp.id}
+            {opportunities.map((opp, i) => {
+              const days = daysUntil(opp.deadline);
+              const urgent = days != null && days <= 14;
+              return (
+                <li
+                  key={opp.id}
+                  style={{
+                    padding: "0.875rem 1.375rem",
+                    borderBottom: i < opportunities.length - 1 ? "1px solid var(--border-muted)" : "none",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: "0.75rem",
+                  }}
+                >
+                  <div style={{ minWidth: 0 }}>
+                    <p
                       style={{
-                        padding: "0.875rem 1.25rem",
-                        borderBottom: i < opportunities.length - 1 ? "1px solid var(--border-muted)" : "none",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        gap: "0.75rem",
+                        fontSize: "0.8125rem",
+                        fontWeight: 500,
+                        color: "var(--text-primary)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        fontFamily: "Inter, system-ui, sans-serif",
                       }}
                     >
-                      <div style={{ minWidth: 0 }}>
-                        <p
-                          style={{
-                            fontSize: "0.8125rem",
-                            fontWeight: 500,
-                            color: "var(--text-primary)",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {opp.name}
-                        </p>
-                        <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
-                          {opp.funder_name} · {formatCurrency(opp.award_max)}
-                        </p>
-                      </div>
-                      <div style={{ textAlign: "right", flexShrink: 0 }}>
-                        <p
-                          style={{
-                            fontSize: "0.75rem",
-                            fontWeight: 600,
-                            color: urgent ? "var(--warning)" : "var(--text-secondary)",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {formatDate(opp.deadline)}
-                        </p>
-                        <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: "1px" }}>
-                          {deadlineUrgencyLabel(days)}
-                        </p>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
+                      {opp.name}
+                    </p>
+                    <p
+                      style={{
+                        fontSize: "0.6875rem",
+                        color: "var(--text-muted)",
+                        marginTop: "3px",
+                        fontFamily: "Inter, system-ui, sans-serif",
+                      }}
+                    >
+                      {opp.funder_name}
+                      {opp.award_max ? (
+                        <>
+                          {" "}
+                          <span style={{ color: "var(--text-faint)" }}>·</span>{" "}
+                          <span style={{ color: "var(--accent)", opacity: 0.8 }}>
+                            {formatCurrency(opp.award_max)}
+                          </span>
+                        </>
+                      ) : null}
+                    </p>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <p
+                      style={{
+                        fontSize: "0.75rem",
+                        fontWeight: 600,
+                        color: urgent ? "var(--warning)" : "var(--text-secondary)",
+                        whiteSpace: "nowrap",
+                        fontFamily: "Inter, system-ui, sans-serif",
+                      }}
+                    >
+                      {formatDate(opp.deadline)}
+                    </p>
+                    <p
+                      style={{
+                        fontSize: "0.5625rem",
+                        color: "var(--text-muted)",
+                        marginTop: "2px",
+                        letterSpacing: "0.04em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {deadlineUrgencyLabel(days)}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </SanctumSection>
 
           {/* Active Proposals */}
-          <section
-            style={{
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: "10px",
-              overflow: "hidden",
-            }}
+          <SanctumSection
+            title="Active Proposals"
+            viewHref="/proposals"
+            empty={proposals.length === 0}
+            emptyMessage="No proposals are currently in progress."
           >
-            <div
-              style={{
-                padding: "1rem 1.25rem",
-                borderBottom: "1px solid var(--border-muted)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <h2 style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
-                Active Proposals
-              </h2>
-              <a
-                href="/proposals"
-                style={{ fontSize: "0.75rem", color: "var(--accent)", textDecoration: "none" }}
+            {proposals.map((p, i) => (
+              <li
+                key={p.id}
+                style={{
+                  padding: "0.875rem 1.375rem",
+                  borderBottom: i < proposals.length - 1 ? "1px solid var(--border-muted)" : "none",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: "0.75rem",
+                }}
               >
-                View all →
-              </a>
-            </div>
-
-            {proposals.length === 0 ? (
-              <EmptyState message="No proposals in progress." />
-            ) : (
-              <ul style={{ listStyle: "none" }}>
-                {proposals.map((p, i) => (
-                  <li
-                    key={p.id}
+                <div style={{ minWidth: 0 }}>
+                  <p
                     style={{
-                      padding: "0.875rem 1.25rem",
-                      borderBottom: i < proposals.length - 1 ? "1px solid var(--border-muted)" : "none",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      gap: "0.75rem",
+                      fontSize: "0.8125rem",
+                      fontWeight: 500,
+                      color: "var(--text-primary)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      fontFamily: "Inter, system-ui, sans-serif",
                     }}
                   >
-                    <div style={{ minWidth: 0 }}>
-                      <p
-                        style={{
-                          fontSize: "0.8125rem",
-                          fontWeight: 500,
-                          color: "var(--text-primary)",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {p.opportunities?.name ?? "Untitled Proposal"}
-                      </p>
-                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "2px" }}>
-                        {p.opportunities?.funder_name ?? "—"}
-                      </p>
-                    </div>
-                    <StageChip stage={p.current_stage} status={p.status} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+                    {p.opportunities?.name ?? "Untitled Proposal"}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "0.6875rem",
+                      color: "var(--text-muted)",
+                      marginTop: "3px",
+                      fontFamily: "Inter, system-ui, sans-serif",
+                    }}
+                  >
+                    {p.opportunities?.funder_name ?? "—"}
+                  </p>
+                </div>
+                <StageChip stage={p.current_stage} status={p.status} />
+              </li>
+            ))}
+          </SanctumSection>
         </div>
 
-        {/* Pipeline activity bar */}
-        <section
+        {/* Agent activity — ritual log */}
+        <div
           style={{
             background: "var(--surface)",
             border: "1px solid var(--border)",
-            borderRadius: "10px",
-            padding: "1rem 1.25rem",
+            borderTop: "1px solid var(--border-accent)",
+            borderRadius: "2px",
+            padding: "1.125rem 1.375rem",
           }}
         >
-          <h2
-            style={{
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              color: "var(--text-primary)",
-              marginBottom: "0.875rem",
-            }}
-          >
-            Agent Activity (last 7 days)
-          </h2>
-          <div style={{ display: "flex", gap: "1.5rem" }}>
+          <SectionHeader title="Agent Activity" subtitle="Last 7 days" />
+          <div style={{ display: "flex", gap: "2rem", marginTop: "0.875rem" }}>
             {[
               { label: "Complete", value: runCounts.complete, color: "var(--success)" },
               { label: "Running", value: runCounts.running, color: "var(--info)" },
               { label: "Errors", value: runCounts.error, color: "var(--danger)" },
             ].map((s) => (
-              <div key={s.label} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <div key={s.label} style={{ display: "flex", alignItems: "center", gap: "0.5625rem" }}>
                 <span
                   style={{
-                    width: "8px",
-                    height: "8px",
-                    borderRadius: "50%",
+                    width: "7px",
+                    height: "7px",
                     background: s.color,
                     flexShrink: 0,
+                    borderRadius: "50%",
                   }}
                 />
-                <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
-                  <strong style={{ color: "var(--text-primary)" }}>{s.value}</strong> {s.label}
+                <span
+                  style={{
+                    fontSize: "0.8125rem",
+                    color: "var(--text-secondary)",
+                    fontFamily: "Inter, system-ui, sans-serif",
+                  }}
+                >
+                  <strong
+                    style={{
+                      color: "var(--text-primary)",
+                      fontFamily: "Georgia, serif",
+                    }}
+                  >
+                    {s.value}
+                  </strong>{" "}
+                  {s.label}
                 </span>
               </div>
             ))}
           </div>
-        </section>
+        </div>
 
         {/* Notion sync log */}
         {recentSyncs.length > 0 && (
-          <section
+          <div
             style={{
               background: "var(--surface)",
               border: "1px solid var(--border)",
-              borderRadius: "10px",
-              padding: "1rem 1.25rem",
+              borderTop: "1px solid var(--border-accent)",
+              borderRadius: "2px",
+              padding: "1.125rem 1.375rem",
             }}
           >
-            <h2
+            <SectionHeader title="Notion Sync" subtitle="Recent operations" />
+            <div
               style={{
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                color: "var(--text-primary)",
-                marginBottom: "0.875rem",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.4375rem",
+                marginTop: "0.875rem",
               }}
             >
-              Notion Sync
-            </h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
               {recentSyncs.map((s: any, i: number) => (
                 <div
                   key={i}
@@ -324,18 +348,24 @@ export default async function DashboardPage() {
                     fontSize: "0.8125rem",
                   }}
                 >
-                  <span style={{ color: "var(--text-secondary)", textTransform: "capitalize" }}>
+                  <span
+                    style={{
+                      color: "var(--text-secondary)",
+                      textTransform: "capitalize",
+                      fontFamily: "Inter, system-ui, sans-serif",
+                    }}
+                  >
                     {s.sync_type.replace(/_/g, " ")}
                   </span>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <span
-                      style={{
-                        fontSize: "0.6875rem",
-                        color: "var(--text-muted)",
-                      }}
-                    >
+                    <span style={{ fontSize: "0.625rem", color: "var(--text-muted)", letterSpacing: "0.02em" }}>
                       {s.last_synced_at
-                        ? new Date(s.last_synced_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+                        ? new Date(s.last_synced_at).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
                         : "—"}
                     </span>
                     <span
@@ -343,7 +373,12 @@ export default async function DashboardPage() {
                         width: "6px",
                         height: "6px",
                         borderRadius: "50%",
-                        background: s.status === "synced" ? "var(--success)" : s.status === "error" ? "var(--danger)" : "var(--warning)",
+                        background:
+                          s.status === "synced"
+                            ? "var(--success)"
+                            : s.status === "error"
+                            ? "var(--danger)"
+                            : "var(--warning)",
                         flexShrink: 0,
                       }}
                     />
@@ -351,7 +386,7 @@ export default async function DashboardPage() {
                 </div>
               ))}
             </div>
-          </section>
+          </div>
         )}
       </main>
     </>
@@ -360,28 +395,119 @@ export default async function DashboardPage() {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function EmptyState({ message }: { message: string }) {
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div
-      style={{
-        padding: "2rem 1.25rem",
-        textAlign: "center",
-        color: "var(--text-muted)",
-        fontSize: "0.8125rem",
-      }}
-    >
-      {message}
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "0.75rem" }}>
+      <h2
+        style={{
+          fontFamily: "Georgia, 'Times New Roman', serif",
+          fontSize: "0.875rem",
+          fontWeight: 700,
+          color: "var(--text-primary)",
+          letterSpacing: "0.01em",
+        }}
+      >
+        {title}
+      </h2>
+      {subtitle && (
+        <span
+          style={{
+            fontSize: "0.5625rem",
+            color: "var(--text-faint)",
+            letterSpacing: "0.07em",
+            textTransform: "uppercase",
+            fontFamily: "Inter, system-ui, sans-serif",
+          }}
+        >
+          {subtitle}
+        </span>
+      )}
     </div>
   );
 }
 
-function StageChip({
-  stage,
-  status,
+function SanctumSection({
+  title,
+  viewHref,
+  empty,
+  emptyMessage,
+  children,
 }: {
-  stage: string | null;
-  status: string;
+  title: string;
+  viewHref: string;
+  empty: boolean;
+  emptyMessage: string;
+  children: React.ReactNode;
 }) {
+  return (
+    <section
+      style={{
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderTop: "1px solid var(--border-accent)",
+        borderRadius: "2px",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          padding: "1rem 1.375rem",
+          borderBottom: "1px solid var(--border-muted)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          background: "var(--surface-raised)",
+        }}
+      >
+        <h2
+          style={{
+            fontFamily: "Georgia, 'Times New Roman', serif",
+            fontSize: "0.875rem",
+            fontWeight: 700,
+            color: "var(--text-primary)",
+            letterSpacing: "0.01em",
+          }}
+        >
+          {title}
+        </h2>
+        <a
+          href={viewHref}
+          style={{
+            fontSize: "0.5625rem",
+            color: "var(--accent)",
+            textDecoration: "none",
+            letterSpacing: "0.09em",
+            textTransform: "uppercase",
+            fontFamily: "Inter, system-ui, sans-serif",
+            fontWeight: 500,
+          }}
+        >
+          View all ›
+        </a>
+      </div>
+
+      {empty ? (
+        <div
+          style={{
+            padding: "2.25rem 1.375rem",
+            textAlign: "center",
+            color: "var(--text-faint)",
+            fontSize: "0.8125rem",
+            fontFamily: "Georgia, serif",
+            fontStyle: "italic",
+            letterSpacing: "0.02em",
+          }}
+        >
+          {emptyMessage}
+        </div>
+      ) : (
+        <ul style={{ listStyle: "none" }}>{children}</ul>
+      )}
+    </section>
+  );
+}
+
+function StageChip({ stage, status }: { stage: string | null; status: string }) {
   const statusColors: Record<string, string> = {
     draft: "var(--text-muted)",
     in_pipeline: "var(--info)",
@@ -400,20 +526,30 @@ function StageChip({
         style={{
           display: "inline-block",
           padding: "2px 8px",
-          borderRadius: "4px",
-          fontSize: "0.6875rem",
-          fontWeight: 600,
-          background: `${color}22`,
+          borderRadius: "2px",
+          fontSize: "0.5625rem",
+          fontWeight: 700,
+          background: `${color}18`,
+          border: `1px solid ${color}40`,
           color,
           textTransform: "uppercase",
-          letterSpacing: "0.04em",
+          letterSpacing: "0.07em",
           whiteSpace: "nowrap",
+          fontFamily: "Inter, system-ui, sans-serif",
         }}
       >
         {status.replace(/_/g, " ")}
       </span>
       {stage && (
-        <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: "3px" }}>
+        <p
+          style={{
+            fontSize: "0.5625rem",
+            color: "var(--text-muted)",
+            marginTop: "3px",
+            fontFamily: "Inter, system-ui, sans-serif",
+            letterSpacing: "0.02em",
+          }}
+        >
           {stage.replace(/_/g, " ")}
         </p>
       )}
