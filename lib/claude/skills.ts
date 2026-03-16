@@ -1,9 +1,14 @@
 import { readFileSync, existsSync } from "fs";
 import path from "path";
 
-const SKILLS_DIR =
+const rawSkillsDir =
   process.env.SKILLS_DIR ??
   path.resolve(process.cwd(), "../Mystik Grant Pipeline/skills");
+
+// Resolve relative paths against cwd so "./skills" works on Vercel
+const SKILLS_DIR = path.isAbsolute(rawSkillsDir)
+  ? rawSkillsDir
+  : path.resolve(process.cwd(), rawSkillsDir);
 
 // Map agent name → skill filename
 const SKILL_FILES: Record<string, string> = {
