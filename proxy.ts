@@ -20,7 +20,13 @@ export async function proxy(request: NextRequest) {
           );
           supabaseResponse = NextResponse.next({ request });
           cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
+            // SameSite=None + Secure required for cookies to work inside iframes
+            // (e.g. embedded in Google Sites / intranet pages on a different domain)
+            supabaseResponse.cookies.set(name, value, {
+              ...options,
+              sameSite: "none",
+              secure: true,
+            })
           );
         },
       },

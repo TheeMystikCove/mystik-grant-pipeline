@@ -17,7 +17,12 @@ export async function createClient() {
         setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
+              // SameSite=None + Secure so cookies are sent inside cross-origin iframes
+              cookieStore.set(name, value, {
+                ...options,
+                sameSite: "none",
+                secure: true,
+              })
             );
           } catch {
             // Called from a Server Component — cookies can't be set.
