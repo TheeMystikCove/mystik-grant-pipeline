@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+
+// Allow up to 5 minutes — Claude pipeline agents can take 60-90s each
+export const maxDuration = 300;
 import { runAgent } from "@/lib/agents/orchestrator";
 import type { AgentName } from "@/types";
 

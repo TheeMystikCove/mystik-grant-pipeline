@@ -3,7 +3,8 @@ import Link from "next/link";
 import { createServerClient } from "@/lib/supabase/server";
 import { Topbar } from "@/components/layout/topbar";
 import { PIPELINE_SEQUENCE, PARALLEL_TIER } from "@/lib/agents/orchestrator";
-import { triggerAgent, approveGate } from "./actions";
+import { approveGate } from "./actions";
+import { RunAgentButton } from "@/components/proposals/RunAgentButton";
 import type { AgentName, AgentRun, ProposalSection } from "@/types";
 
 async function getProposalWorkspace(id: string) {
@@ -173,30 +174,10 @@ export default async function ProposalWorkspacePage({
           {/* Trigger button */}
           {proposal.status !== "submitted" && proposal.status !== "finalized" && (
             <div style={{ padding: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <form action={triggerAgent}>
-                <input type="hidden" name="proposal_project_id" value={id} />
-                <input
-                  type="hidden"
-                  name="agent_name"
-                  value={proposal.current_stage ?? "intake_orchestrator"}
-                />
-                <button
-                  type="submit"
-                  style={{
-                    width: "100%",
-                    background: "var(--accent)",
-                    color: "#fff",
-                    border: "none",
-                    borderRadius: "6px",
-                    padding: "0.5rem",
-                    fontSize: "0.8125rem",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  Run Next Agent
-                </button>
-              </form>
+              <RunAgentButton
+                proposalProjectId={id}
+                agentName={proposal.current_stage ?? "intake_orchestrator"}
+              />
               <Link
                 href={`/proposals/${id}/finalize`}
                 style={{
