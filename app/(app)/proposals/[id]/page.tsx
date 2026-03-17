@@ -97,6 +97,15 @@ export default async function ProposalWorkspacePage({
   const runMap = latestRunMap(agentRuns);
   const opp = proposal.opportunities as any;
 
+  // Find the first agent in the pipeline that hasn't completed yet
+  const completedSet = new Set(
+    Object.entries(runMap)
+      .filter(([, r]) => r.status === "complete")
+      .map(([name]) => name)
+  );
+  const nextPendingAgent: AgentName =
+    ALL_PIPELINE.find((a) => !completedSet.has(a)) ?? ALL_PIPELINE[ALL_PIPELINE.length - 1];
+
   return (
     <>
       <Topbar
@@ -176,7 +185,8 @@ export default async function ProposalWorkspacePage({
             <div style={{ padding: "1rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               <RunAgentButton
                 proposalProjectId={id}
-                agentName={proposal.current_stage ?? "intake_orchestrator"}
+                agentName={nextPendingAgent}
+                pipelineSequence={ALL_PIPELINE}
               />
               <Link
                 href={`/proposals/${id}/finalize`}
@@ -318,7 +328,7 @@ export default async function ProposalWorkspacePage({
               </h2>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
                 {sections.map((s) => (
-                  <SectionCard key={s.id} section={s} proposalProjectId={id} />
+                  <SectionCard key={s.id} section={s} />
                 ))}
               </div>
             </section>
@@ -354,10 +364,8 @@ export default async function ProposalWorkspacePage({
 
 function SectionCard({
   section,
-  proposalProjectId,
 }: {
   section: ProposalSection;
-  proposalProjectId: string;
 }) {
   return (
     <div

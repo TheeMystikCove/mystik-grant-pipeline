@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 
 interface Props {
   proposalProjectId: string;
-  agentName: string;
+  agentName: string;        // first unrun agent determined by server
+  pipelineSequence: string[]; // full ordered pipeline so we can advance locally
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -23,12 +24,22 @@ const STAGE_LABELS: Record<string, string> = {
   final_grant_writer: "Final Grant Writer",
 };
 
-export function RunAgentButton({ proposalProjectId, agentName }: Props) {
+export function RunAgentButton({ proposalProjectId, agentName, pipelineSequence }: Props) {
   const router = useRouter();
+
+  // activeAgent tracks which agent the button will run next.
+  // Initialized from server prop; advances locally on completion.
+  const [activeAgent, setActiveAgent] = useState(agentName);
   const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const label = STAGE_LABELS[agentName] ?? agentName.replace(/_/g, " ");
+  const label = STAGE_LABELS[activeAgent] ?? activeAgent.replace(/_/g, " ");
+  const currentIdx = pipelineSequence.indexOf(activeAgent);
+  const isLast = currentIdx === pipelineSequence.length - 1 || currentIdx === -1;
+  const nextAgent = !isLast ? pipelineSequence[currentIdx + 1] : null;
+  const nextLabel = nextAgent
+    ? (STAGE_LABELS[nextAgent] ?? nextAgent.replace(/_/g, " "))
+    : null;
 
   async function handleRun() {
     setStatus("running");
@@ -38,7 +49,7 @@ export function RunAgentButton({ proposalProjectId, agentName }: Props) {
       const res = await fetch("/api/agents/run", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ proposalProjectId, agentName, input: {} }),
+        body: JSON.stringify({ proposalProjectId, agentName: activeAgent, input: {} }),
       });
 
       if (!res.ok) {
@@ -46,8 +57,15 @@ export function RunAgentButton({ proposalProjectId, agentName }: Props) {
         throw new Error(body.error ?? "Agent run failed");
       }
 
-      setStatus("done");
-      // Refresh server component data to show new sections / run status
+      // Advance to the next agent locally — no need to wait for server refresh
+      if (nextAgent) {
+        setActiveAgent(nextAgent);
+        setStatus("idle");
+      } else {
+        setStatus("done"); // pipeline complete
+      }
+
+      // Refresh server component data to update sidebar dots and sections
       router.refresh();
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : String(err));
@@ -129,16 +147,32 @@ export function RunAgentButton({ proposalProjectId, agentName }: Props) {
           <strong>Agent failed:</strong> {errorMsg}
         </div>
         <button onClick={handleRun} style={btnStyle}>
-          Retry Agent
+          Retry {label}
         </button>
       </div>
     );
   }
 
+  if (status === "done") {
+    return (
+      <button onClick={handleRun} style={{ ...btnStyle, background: "var(--success)" }}>
+        ✓ Pipeline Complete — Run Again
+      </button>
+    );
+  }
+
+  // idle — show the next agent to run, with a hint about what follows
   return (
-    <button onClick={handleRun} style={btnStyle}>
-      {status === "done" ? "✓ Run Again" : "▶ Run Next Agent"}
-    </button>
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+      <button onClick={handleRun} style={btnStyle}>
+        ▶ Run {label}
+      </button>
+      {nextLabel && (
+        <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", textAlign: "center", margin: 0 }}>
+          Next: {nextLabel}
+        </p>
+      )}
+    </div>
   );
 }
 
