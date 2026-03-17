@@ -27,14 +27,33 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
 
-  if (!user && !isPublic) {
+  // getUser() makes a network request to Supabase to validate the session.
+  // Only redirect to login when the session is definitively missing —
+  // not on transient network errors (Supabase down, project paused, etc.).
+  let user = null;
+  let enforceAuth = true;
+
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (!error) {
+      // Clean result — user is either authenticated or definitively null
+      user = data.user;
+    } else if (error.name === "AuthSessionMissingError") {
+      // No session cookie present — definitely not logged in
+      user = null;
+    } else {
+      // Network error, Supabase unavailable, etc. — don't kick out users
+      enforceAuth = false;
+    }
+  } catch {
+    // Unexpected error — allow through to avoid hard boot loops
+    enforceAuth = false;
+  }
+
+  if (enforceAuth && !user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -48,6 +67,8 @@ export async function proxy(request: NextRequest) {
 
   return supabaseResponse;
 }
+
+export default proxy;
 
 export const config = {
   matcher: [
