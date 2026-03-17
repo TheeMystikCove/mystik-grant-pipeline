@@ -16,7 +16,7 @@ export async function startProposal(formData: FormData) {
   const { data: userRow } = await supabase
     .from("users")
     .select("organization_id")
-    .eq("id", user.id)
+    .eq("auth_user_id", user.id)
     .single();
 
   if (!userRow?.organization_id) {
