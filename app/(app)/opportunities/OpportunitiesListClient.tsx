@@ -83,6 +83,7 @@ export function OpportunitiesListClient({ opportunities }: Props) {
         setDeleteError(result.error);
       } else {
         setSelected(new Set());
+        router.refresh();
       }
     });
   }
