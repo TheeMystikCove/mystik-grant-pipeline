@@ -163,7 +163,7 @@ export async function inviteTeamMember(formData: FormData): Promise<{ error?: st
       .single();
 
     if (!inviter) return { error: "User record not found." };
-    if (inviter.role !== "admin") return { error: "Only admins can send invitations." };
+    if (inviter.role !== "founder_admin") return { error: "Only founder admins can send invitations." };
     if (!inviter.organization_id) return { error: "No organization found." };
 
     const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://grant-engine.vercel.app";

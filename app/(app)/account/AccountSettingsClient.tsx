@@ -565,11 +565,11 @@ function TeamTab({
               <span style={{
                 fontSize: "0.625rem",
                 fontWeight: 700,
-                color: member.role === "admin" ? "var(--accent)" : "var(--text-muted)",
+                color: member.role === "founder_admin" ? "var(--accent)" : "var(--text-muted)",
                 textTransform: "uppercase",
                 letterSpacing: "0.08em",
-                background: member.role === "admin" ? "var(--surface-accent)" : "var(--surface-raised)",
-                border: `1px solid ${member.role === "admin" ? "var(--border-accent)" : "var(--border)"}`,
+                background: member.role === "founder_admin" ? "var(--surface-accent)" : "var(--surface-raised)",
+                border: `1px solid ${member.role === "founder_admin" ? "var(--border-accent)" : "var(--border)"}`,
                 borderRadius: "4px",
                 padding: "0.1875rem 0.5rem",
                 flexShrink: 0,
@@ -581,8 +581,8 @@ function TeamTab({
         )}
       </div>
 
-      {/* Invite form — admin only */}
-      {userRole === "admin" && (
+      {/* Invite form — founder_admin only */}
+      {userRole === "founder_admin" && (
         <div style={{ ...cardStyle, padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
           <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)" }}>Invite a Team Member</p>
           <form onSubmit={handleInvite} style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
@@ -590,11 +590,12 @@ function TeamTab({
               <Input name="invite_email" type="email" placeholder="colleague@example.com" required />
             </Field>
             <Field label="Role">
-              <select name="invite_role" defaultValue="member" style={inputStyle}>
-                <option value="member">Member</option>
-                <option value="admin">Admin</option>
-                <option value="grant_writer">Grant Writer</option>
-                <option value="viewer">Viewer</option>
+              <select name="invite_role" defaultValue="grant_strategist" style={inputStyle}>
+                <option value="founder_admin">Founder Admin</option>
+                <option value="grant_strategist">Grant Strategist</option>
+                <option value="program_lead">Program Lead</option>
+                <option value="reviewer">Reviewer</option>
+                <option value="ops_assistant">Ops Assistant</option>
               </select>
             </Field>
 
