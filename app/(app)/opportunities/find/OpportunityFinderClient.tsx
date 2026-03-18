@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { startProposal } from "../[id]/actions";
 
 interface SearchResult {
   id: string;
@@ -305,7 +306,13 @@ function ResultCard({ opp }: { opp: SearchResult }) {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", flexShrink: 0 }}>
-        <a href={`/opportunities/${opp.id}`} style={btnPrimaryStyle}>
+        <form action={startProposal}>
+          <input type="hidden" name="opportunity_id" value={opp.id} />
+          <button type="submit" style={{ ...btnPrimaryStyle, width: "100%", cursor: "pointer", border: "none" }}>
+            Start Proposal
+          </button>
+        </form>
+        <a href={`/opportunities/${opp.id}`} style={btnSecondaryStyle}>
           View
         </a>
         {opp.source_url && (
