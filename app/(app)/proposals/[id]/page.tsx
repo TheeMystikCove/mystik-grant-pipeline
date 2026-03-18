@@ -129,6 +129,31 @@ export default async function ProposalWorkspacePage({
             padding: "1rem 0",
           }}
         >
+          {/* Intake form link — always visible at top of sidebar */}
+          <div style={{ padding: "0 1rem 1rem" }}>
+            <Link
+              href={`/proposals/${id}/intake`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "0.5625rem 0.75rem",
+                background: "var(--surface-accent)",
+                border: "1px solid var(--border-accent)",
+                borderRadius: "6px",
+                textDecoration: "none",
+                gap: "0.5rem",
+              }}
+            >
+              <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--accent)" }}>
+                📋 Intake Form
+              </span>
+              <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                Fill data →
+              </span>
+            </Link>
+          </div>
+
           <p
             style={{
               padding: "0 1rem 0.625rem",

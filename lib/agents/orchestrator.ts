@@ -187,9 +187,14 @@ async function loadProjectContext(
     }
   }
 
+  // Flatten the project_snapshot_json fields to top-level so agents can access them
+  // directly without needing to dig into nested JSON.
+  const snapshot = (intake as any)?.project_snapshot_json ?? {};
+
   return {
     proposal_project: project,
     intake: intake ?? {},
+    intake_data: snapshot,
     prior_outputs: priorOutputs,
   };
 }
