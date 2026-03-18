@@ -3,6 +3,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { Topbar } from "@/components/layout/topbar";
 import { formatCurrency, formatDate, daysUntil } from "@/lib/utils";
 import { startProposal } from "./actions";
+import { ScoreForm } from "./ScoreForm";
 
 async function getOpportunity(id: string) {
   const supabase = await createServerClient();
@@ -140,56 +141,7 @@ export default async function OpportunityDetailPage({
           {/* Score */}
           <section style={cardStyle}>
             <SectionHeader>Priority Score</SectionHeader>
-            {score ? (
-              <>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "baseline",
-                    gap: "0.5rem",
-                    marginBottom: "1rem",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: "2.5rem",
-                      fontWeight: 700,
-                      color:
-                        score.total_score >= 70
-                          ? "var(--success)"
-                          : score.total_score >= 45
-                          ? "var(--warning)"
-                          : "var(--danger)",
-                      lineHeight: 1,
-                    }}
-                  >
-                    {score.total_score}
-                  </span>
-                  <span style={{ fontSize: "1rem", color: "var(--text-muted)" }}>/ 100</span>
-                  <span
-                    style={{
-                      marginLeft: "auto",
-                      fontSize: "0.8125rem",
-                      fontWeight: 600,
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    {score.label}
-                  </span>
-                </div>
-                <dl style={dlStyle}>
-                  <Field label="Strategic Fit (40%)">{score.strategic_fit_score ?? "—"}</Field>
-                  <Field label="Eligibility (25%)">{score.eligibility_score ?? "—"}</Field>
-                  <Field label="Readiness (15%)">{score.readiness_score ?? "—"}</Field>
-                  <Field label="Award Value (10%)">{score.award_value_score ?? "—"}</Field>
-                  <Field label="Deadline Urgency (10%)">{score.urgency_score ?? "—"}</Field>
-                </dl>
-              </>
-            ) : (
-              <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
-                No score calculated yet. Run the Discovery agents to score this opportunity.
-              </p>
-            )}
+            <ScoreForm opportunityId={opp.id} existing={score ?? null} />
           </section>
         </div>
 
