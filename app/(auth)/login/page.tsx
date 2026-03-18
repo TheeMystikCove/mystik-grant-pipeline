@@ -1,4 +1,4 @@
-import { signIn, signUp } from "./actions";
+import { signIn, signUp, resetPassword } from "./actions";
 
 interface Props {
   searchParams: Promise<{ error?: string; success?: string; mode?: string }>;
@@ -7,6 +7,7 @@ interface Props {
 export default async function LoginPage({ searchParams }: Props) {
   const { error, success, mode } = await searchParams;
   const isSignUp = mode === "signup";
+  const isForgot = mode === "forgot";
 
   return (
     <div
@@ -120,7 +121,7 @@ export default async function LoginPage({ searchParams }: Props) {
             }}
           >
             {[
-              { label: "Sign In", href: "/login", active: !isSignUp },
+              { label: "Sign In", href: "/login", active: !isSignUp && !isForgot },
               { label: "Create Account", href: "/login?mode=signup", active: isSignUp },
             ].map((tab) => (
               <a
@@ -184,10 +185,25 @@ export default async function LoginPage({ searchParams }: Props) {
           )}
 
           {/* Sign In Form */}
-          {!isSignUp && (
+          {!isSignUp && !isForgot && (
             <form action={signIn} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
               <Field id="email" label="Email Address" type="email" placeholder="you@theemystikcove.com" />
-              <Field id="password" label="Passphrase" type="password" placeholder="••••••••••••" />
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+                <Field id="password" label="Passphrase" type="password" placeholder="••••••••••••" />
+                <a
+                  href="/login?mode=forgot"
+                  style={{
+                    alignSelf: "flex-end",
+                    fontSize: "0.625rem",
+                    color: "var(--text-muted)",
+                    textDecoration: "none",
+                    fontFamily: "Inter, system-ui, sans-serif",
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  Forgot passphrase?
+                </a>
+              </div>
 
               <button
                 type="submit"
@@ -210,6 +226,50 @@ export default async function LoginPage({ searchParams }: Props) {
               >
                 Enter the Sanctum
               </button>
+            </form>
+          )}
+
+          {/* Forgot Password Form */}
+          {isForgot && (
+            <form action={resetPassword} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+              <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", lineHeight: 1.6, fontFamily: "Inter, system-ui, sans-serif" }}>
+                Enter your email address and we'll send you a link to reset your passphrase.
+              </p>
+              <Field id="email" label="Email Address" type="email" placeholder="you@theemystikcove.com" />
+              <button
+                type="submit"
+                style={{
+                  marginTop: "0.5rem",
+                  background: "var(--accent)",
+                  color: "#efe8d6",
+                  border: "none",
+                  borderRadius: "2px",
+                  padding: "0.75rem 1rem",
+                  fontSize: "0.6875rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  cursor: "pointer",
+                  width: "100%",
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  boxShadow: "0 2px 12px #bb7b3d30",
+                }}
+              >
+                Send Reset Link
+              </button>
+              <a
+                href="/login"
+                style={{
+                  textAlign: "center",
+                  fontSize: "0.625rem",
+                  color: "var(--text-muted)",
+                  textDecoration: "none",
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                ← Back to Sign In
+              </a>
             </form>
           )}
 
@@ -283,7 +343,7 @@ export default async function LoginPage({ searchParams }: Props) {
                 whiteSpace: "nowrap",
               }}
             >
-              {isSignUp ? "Org members only" : "Access by invitation only"}
+              {isSignUp ? "Org members only" : isForgot ? "Password recovery" : "Access by invitation only"}
             </p>
             <div style={{ flex: 1, height: "1px", background: "var(--border-muted)" }} />
           </div>

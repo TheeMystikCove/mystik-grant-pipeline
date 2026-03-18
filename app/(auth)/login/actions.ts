@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createServerClient } from "@/lib/supabase/server";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://grant-engine.vercel.app";
+
 const ALLOWED_DOMAIN = "@theemystikcove.com";
 
 export async function signIn(formData: FormData) {
@@ -69,4 +71,26 @@ export async function signOut() {
   const supabase = await createServerClient();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+export async function resetPassword(formData: FormData) {
+  const email = (formData.get("email") as string)?.trim().toLowerCase();
+  if (!email) {
+    redirect(`/login?mode=forgot&error=${encodeURIComponent("Email address is required.")}`);
+  }
+
+  const supabase = await createServerClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${SITE_URL}/auth/callback?next=/reset-password`,
+  });
+
+  if (error) {
+    redirect(`/login?mode=forgot&error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(
+    `/login?mode=forgot&success=${encodeURIComponent(
+      "Reset link sent. Check your email and follow the instructions."
+    )}`
+  );
 }
