@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createServerClient } from "@/lib/supabase/server";
 import { Topbar } from "@/components/layout/topbar";
 import { formatCurrency, formatDate, daysUntil, deadlineUrgencyLabel } from "@/lib/utils";
@@ -6,28 +7,47 @@ import type { Opportunity, ProposalProject } from "@/types";
 async function getDashboardData() {
   const supabase = await createServerClient();
 
-  const [{ data: opportunities }, { data: proposals }, { data: agentRuns }, { data: syncJobs }] = await Promise.all([
+  const [
+    { data: opportunities },
+    { data: proposals },
+    { data: agentRuns },
+    { data: recentRuns },
+    { count: submittedCount },
+  ] = await Promise.all([
+    // All active opportunities — not just "pursuing"
     supabase
       .from("opportunities")
-      .select("*")
-      .eq("status", "pursuing")
-      .order("deadline", { ascending: true })
-      .limit(5),
+      .select("id, name, funder_name, deadline, award_max, status")
+      .in("status", ["new", "identified", "pursuing"])
+      .order("deadline", { ascending: true, nullsFirst: false })
+      .limit(6),
+
+    // Active proposals with linked opportunity info
     supabase
       .from("proposal_projects")
-      .select("*, opportunities(name, funder_name, deadline, award_max)")
-      .neq("status", "archived")
+      .select("id, status, current_stage, updated_at, opportunities(name, funder_name, deadline, award_max)")
+      .not("status", "in", '("archived","finalized")')
       .order("updated_at", { ascending: false })
       .limit(6),
+
+    // Agent runs last 7 days — for activity metrics
     supabase
       .from("agent_runs")
       .select("status")
       .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
+
+    // Most recent 5 agent runs — for activity feed
     supabase
-      .from("notion_sync_jobs")
-      .select("sync_type, status, last_synced_at")
-      .order("last_synced_at", { ascending: false })
+      .from("agent_runs")
+      .select("id, agent_name, status, created_at, proposal_project_id, proposal_projects(opportunities(name))")
+      .order("created_at", { ascending: false })
       .limit(5),
+
+    // Count of submitted proposals
+    supabase
+      .from("proposal_projects")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "submitted"),
   ]);
 
   const runCounts = {
@@ -37,18 +57,42 @@ async function getDashboardData() {
     error: agentRuns?.filter((r) => r.status === "error").length ?? 0,
   };
 
+  // Total potential funding across active opportunities
+  const pipelineValue = (opportunities ?? []).reduce(
+    (sum, opp) => sum + (opp.award_max ?? 0),
+    0
+  );
+
   return {
-    opportunities: (opportunities ?? []) as Opportunity[],
-    proposals: (proposals ?? []) as (ProposalProject & {
+    opportunities: (opportunities ?? []) as (Opportunity & { status: string })[],
+    proposals: (proposals ?? []) as unknown as (ProposalProject & {
       opportunities: { name: string; funder_name: string; deadline: string | null; award_max: number | null } | null;
     })[],
     runCounts,
-    recentSyncs: syncJobs ?? [],
+    recentRuns: (recentRuns ?? []) as any[],
+    pipelineValue,
+    submittedCount: submittedCount ?? 0,
   };
 }
 
+const AGENT_LABELS: Record<string, string> = {
+  intake_orchestrator: "Intake",
+  grant_requirements_parser: "Requirements",
+  funder_fit_analyzer: "Funder Fit",
+  research_evidence_scout: "Research",
+  program_architect: "Program",
+  narrative_strategist: "Narrative",
+  budget_architect: "Budget",
+  evaluation_designer: "Evaluation",
+  compliance_qa_reviewer: "Compliance QA",
+  proposal_compiler: "Compiler",
+  revision_manager: "Revision",
+  final_grant_writer: "Final Writer",
+};
+
 export default async function DashboardPage() {
-  const { opportunities, proposals, runCounts, recentSyncs } = await getDashboardData();
+  const { opportunities, proposals, runCounts, recentRuns, pipelineValue, submittedCount } =
+    await getDashboardData();
 
   return (
     <>
@@ -64,71 +108,158 @@ export default async function DashboardPage() {
           gap: "1.5rem",
         }}
       >
-        {/* Sovereign stat row */}
+        {/* Quick actions */}
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <Link
+            href="/opportunities/find"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.5rem 1.125rem",
+              background: "var(--accent)",
+              color: "#efe8d6",
+              borderRadius: "4px",
+              textDecoration: "none",
+              fontSize: "0.75rem",
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              boxShadow: "0 2px 10px #bb7b3d30",
+            }}
+          >
+            ◎ Find Grants
+          </Link>
+          <Link
+            href="/opportunities"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.5rem 1.125rem",
+              background: "var(--surface)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--border)",
+              borderRadius: "4px",
+              textDecoration: "none",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+            }}
+          >
+            View Opportunities →
+          </Link>
+          <Link
+            href="/proposals"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.5rem 1.125rem",
+              background: "var(--surface)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--border)",
+              borderRadius: "4px",
+              textDecoration: "none",
+              fontSize: "0.75rem",
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+            }}
+          >
+            View Proposals →
+          </Link>
+        </div>
+
+        {/* Stat cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem" }}>
           {[
-            { label: "Active Opportunities", value: opportunities.length, color: "var(--info)", icon: "◎" },
-            { label: "Active Proposals", value: proposals.length, color: "var(--accent)", icon: "◈" },
-            { label: "Agent Runs — 7d", value: runCounts.total, color: "var(--text-secondary)", icon: "◇" },
             {
-              label: "Errors — 7d",
-              value: runCounts.error,
-              color: runCounts.error > 0 ? "var(--danger)" : "var(--success)",
+              label: "Active Opportunities",
+              value: opportunities.length,
+              color: "var(--info)",
+              icon: "◎",
+              href: "/opportunities",
+            },
+            {
+              label: "Active Proposals",
+              value: proposals.length,
+              color: "var(--accent)",
+              icon: "◈",
+              href: "/proposals",
+            },
+            {
+              label: "Pipeline Value",
+              value: pipelineValue > 0 ? formatCurrency(pipelineValue) : "—",
+              color: "var(--success)",
               icon: "◆",
+              href: "/opportunities",
+            },
+            {
+              label: "Submitted",
+              value: submittedCount,
+              color: submittedCount > 0 ? "var(--success)" : "var(--text-muted)",
+              icon: "◇",
+              href: "/proposals",
             },
           ].map((stat) => (
-            <div
+            <Link
               key={stat.label}
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderTop: "1px solid var(--border-accent)",
-                borderRadius: "2px",
-                padding: "1.125rem 1.375rem",
-                position: "relative",
-                overflow: "hidden",
-              }}
+              href={stat.href}
+              style={{ textDecoration: "none" }}
             >
-              {/* Corner ornament */}
-              <span
-                aria-hidden
+              <div
                 style={{
-                  position: "absolute",
-                  top: "0.625rem",
-                  right: "0.75rem",
-                  fontSize: "0.4375rem",
-                  color: stat.color,
-                  opacity: 0.35,
-                  letterSpacing: "0.1em",
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderTop: "1px solid var(--border-accent)",
+                  borderRadius: "2px",
+                  padding: "1.125rem 1.375rem",
+                  position: "relative",
+                  overflow: "hidden",
+                  cursor: "pointer",
+                  transition: "border-color 0.15s",
                 }}
               >
-                {stat.icon}
-              </span>
-              <p
-                style={{
-                  fontSize: "0.5625rem",
-                  color: "var(--text-muted)",
-                  marginBottom: "0.5rem",
-                  letterSpacing: "0.09em",
-                  textTransform: "uppercase",
-                  fontFamily: "Inter, system-ui, sans-serif",
-                }}
-              >
-                {stat.label}
-              </p>
-              <p
-                style={{
-                  fontFamily: "Georgia, serif",
-                  fontSize: "1.75rem",
-                  fontWeight: 700,
-                  color: stat.color,
-                  lineHeight: 1,
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                {stat.value}
-              </p>
-            </div>
+                <span
+                  aria-hidden
+                  style={{
+                    position: "absolute",
+                    top: "0.625rem",
+                    right: "0.75rem",
+                    fontSize: "0.4375rem",
+                    color: stat.color,
+                    opacity: 0.35,
+                    letterSpacing: "0.1em",
+                  }}
+                >
+                  {stat.icon}
+                </span>
+                <p
+                  style={{
+                    fontSize: "0.5625rem",
+                    color: "var(--text-muted)",
+                    marginBottom: "0.5rem",
+                    letterSpacing: "0.09em",
+                    textTransform: "uppercase",
+                    fontFamily: "Inter, system-ui, sans-serif",
+                  }}
+                >
+                  {stat.label}
+                </p>
+                <p
+                  style={{
+                    fontFamily: "Georgia, serif",
+                    fontSize: typeof stat.value === "string" && stat.value.length > 6 ? "1.25rem" : "1.75rem",
+                    fontWeight: 700,
+                    color: stat.color,
+                    lineHeight: 1,
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  {stat.value}
+                </p>
+              </div>
+            </Link>
           ))}
         </div>
 
@@ -139,21 +270,108 @@ export default async function DashboardPage() {
             title="Upcoming Deadlines"
             viewHref="/opportunities"
             empty={opportunities.length === 0}
-            emptyMessage="No active opportunities are being pursued."
+            emptyMessage="No active opportunities yet."
+            emptyCta={{ label: "Find Grants", href: "/opportunities/find" }}
           >
             {opportunities.map((opp, i) => {
               const days = daysUntil(opp.deadline);
               const urgent = days != null && days <= 14;
+              const overdue = days != null && days < 0;
               return (
-                <li
-                  key={opp.id}
+                <li key={opp.id} style={{ borderBottom: i < opportunities.length - 1 ? "1px solid var(--border-muted)" : "none" }}>
+                  <Link
+                    href={`/opportunities/${opp.id}`}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: "0.75rem",
+                      padding: "0.875rem 1.375rem",
+                      textDecoration: "none",
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <p
+                        style={{
+                          fontSize: "0.8125rem",
+                          fontWeight: 500,
+                          color: "var(--text-primary)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          fontFamily: "Inter, system-ui, sans-serif",
+                        }}
+                      >
+                        {opp.name}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: "0.6875rem",
+                          color: "var(--text-muted)",
+                          marginTop: "3px",
+                          fontFamily: "Inter, system-ui, sans-serif",
+                        }}
+                      >
+                        {opp.funder_name}
+                        {opp.award_max ? (
+                          <>
+                            {" "}<span style={{ color: "var(--text-faint)" }}>·</span>{" "}
+                            <span style={{ color: "var(--accent)", opacity: 0.8 }}>
+                              {formatCurrency(opp.award_max)}
+                            </span>
+                          </>
+                        ) : null}
+                      </p>
+                    </div>
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <p
+                        style={{
+                          fontSize: "0.75rem",
+                          fontWeight: 600,
+                          color: overdue ? "var(--danger)" : urgent ? "var(--warning)" : "var(--text-secondary)",
+                          whiteSpace: "nowrap",
+                          fontFamily: "Inter, system-ui, sans-serif",
+                        }}
+                      >
+                        {formatDate(opp.deadline)}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: "0.5625rem",
+                          color: overdue ? "var(--danger)" : "var(--text-muted)",
+                          marginTop: "2px",
+                          letterSpacing: "0.04em",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {deadlineUrgencyLabel(days)}
+                      </p>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </SanctumSection>
+
+          {/* Active Proposals */}
+          <SanctumSection
+            title="Active Proposals"
+            viewHref="/proposals"
+            empty={proposals.length === 0}
+            emptyMessage="No proposals in progress."
+            emptyCta={{ label: "Browse Opportunities", href: "/opportunities" }}
+          >
+            {proposals.map((p, i) => (
+              <li key={p.id} style={{ borderBottom: i < proposals.length - 1 ? "1px solid var(--border-muted)" : "none" }}>
+                <Link
+                  href={`/proposals/${p.id}`}
                   style={{
-                    padding: "0.875rem 1.375rem",
-                    borderBottom: i < opportunities.length - 1 ? "1px solid var(--border-muted)" : "none",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "flex-start",
                     gap: "0.75rem",
+                    padding: "0.875rem 1.375rem",
+                    textDecoration: "none",
                   }}
                 >
                   <div style={{ minWidth: 0 }}>
@@ -168,7 +386,7 @@ export default async function DashboardPage() {
                         fontFamily: "Inter, system-ui, sans-serif",
                       }}
                     >
-                      {opp.name}
+                      {p.opportunities?.name ?? "Untitled Proposal"}
                     </p>
                     <p
                       style={{
@@ -178,148 +396,19 @@ export default async function DashboardPage() {
                         fontFamily: "Inter, system-ui, sans-serif",
                       }}
                     >
-                      {opp.funder_name}
-                      {opp.award_max ? (
-                        <>
-                          {" "}
-                          <span style={{ color: "var(--text-faint)" }}>·</span>{" "}
-                          <span style={{ color: "var(--accent)", opacity: 0.8 }}>
-                            {formatCurrency(opp.award_max)}
-                          </span>
-                        </>
-                      ) : null}
+                      {p.opportunities?.funder_name ?? "—"}
                     </p>
                   </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <p
-                      style={{
-                        fontSize: "0.75rem",
-                        fontWeight: 600,
-                        color: urgent ? "var(--warning)" : "var(--text-secondary)",
-                        whiteSpace: "nowrap",
-                        fontFamily: "Inter, system-ui, sans-serif",
-                      }}
-                    >
-                      {formatDate(opp.deadline)}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: "0.5625rem",
-                        color: "var(--text-muted)",
-                        marginTop: "2px",
-                        letterSpacing: "0.04em",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      {deadlineUrgencyLabel(days)}
-                    </p>
-                  </div>
-                </li>
-              );
-            })}
-          </SanctumSection>
-
-          {/* Active Proposals */}
-          <SanctumSection
-            title="Active Proposals"
-            viewHref="/proposals"
-            empty={proposals.length === 0}
-            emptyMessage="No proposals are currently in progress."
-          >
-            {proposals.map((p, i) => (
-              <li
-                key={p.id}
-                style={{
-                  padding: "0.875rem 1.375rem",
-                  borderBottom: i < proposals.length - 1 ? "1px solid var(--border-muted)" : "none",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  gap: "0.75rem",
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <p
-                    style={{
-                      fontSize: "0.8125rem",
-                      fontWeight: 500,
-                      color: "var(--text-primary)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      fontFamily: "Inter, system-ui, sans-serif",
-                    }}
-                  >
-                    {p.opportunities?.name ?? "Untitled Proposal"}
-                  </p>
-                  <p
-                    style={{
-                      fontSize: "0.6875rem",
-                      color: "var(--text-muted)",
-                      marginTop: "3px",
-                      fontFamily: "Inter, system-ui, sans-serif",
-                    }}
-                  >
-                    {p.opportunities?.funder_name ?? "—"}
-                  </p>
-                </div>
-                <StageChip stage={p.current_stage} status={p.status} />
+                  <StageChip status={p.status} />
+                </Link>
               </li>
             ))}
           </SanctumSection>
         </div>
 
-        {/* Agent activity — ritual log */}
-        <div
-          style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderTop: "1px solid var(--border-accent)",
-            borderRadius: "2px",
-            padding: "1.125rem 1.375rem",
-          }}
-        >
-          <SectionHeader title="Agent Activity" subtitle="Last 7 days" />
-          <div style={{ display: "flex", gap: "2rem", marginTop: "0.875rem" }}>
-            {[
-              { label: "Complete", value: runCounts.complete, color: "var(--success)" },
-              { label: "Running", value: runCounts.running, color: "var(--info)" },
-              { label: "Errors", value: runCounts.error, color: "var(--danger)" },
-            ].map((s) => (
-              <div key={s.label} style={{ display: "flex", alignItems: "center", gap: "0.5625rem" }}>
-                <span
-                  style={{
-                    width: "7px",
-                    height: "7px",
-                    background: s.color,
-                    flexShrink: 0,
-                    borderRadius: "50%",
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: "0.8125rem",
-                    color: "var(--text-secondary)",
-                    fontFamily: "Inter, system-ui, sans-serif",
-                  }}
-                >
-                  <strong
-                    style={{
-                      color: "var(--text-primary)",
-                      fontFamily: "Georgia, serif",
-                    }}
-                  >
-                    {s.value}
-                  </strong>{" "}
-                  {s.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Notion sync log */}
-        {recentSyncs.length > 0 && (
+        {/* Bottom row: Agent activity + Recent runs */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }}>
+          {/* Agent metrics */}
           <div
             style={{
               background: "var(--surface)",
@@ -329,65 +418,70 @@ export default async function DashboardPage() {
               padding: "1.125rem 1.375rem",
             }}
           >
-            <SectionHeader title="Notion Sync" subtitle="Recent operations" />
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.4375rem",
-                marginTop: "0.875rem",
-              }}
-            >
-              {recentSyncs.map((s: any, i: number) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    fontSize: "0.8125rem",
-                  }}
-                >
-                  <span
-                    style={{
-                      color: "var(--text-secondary)",
-                      textTransform: "capitalize",
-                      fontFamily: "Inter, system-ui, sans-serif",
-                    }}
-                  >
-                    {s.sync_type.replace(/_/g, " ")}
-                  </span>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <span style={{ fontSize: "0.625rem", color: "var(--text-muted)", letterSpacing: "0.02em" }}>
-                      {s.last_synced_at
-                        ? new Date(s.last_synced_at).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "—"}
-                    </span>
-                    <span
-                      style={{
-                        width: "6px",
-                        height: "6px",
-                        borderRadius: "50%",
-                        background:
-                          s.status === "synced"
-                            ? "var(--success)"
-                            : s.status === "error"
-                            ? "var(--danger)"
-                            : "var(--warning)",
-                        flexShrink: 0,
-                      }}
-                    />
-                  </div>
+            <SectionHeader title="Agent Activity" subtitle="Last 7 days" />
+            <div style={{ display: "flex", gap: "2rem", marginTop: "0.875rem" }}>
+              {[
+                { label: "Runs", value: runCounts.total, color: "var(--text-secondary)" },
+                { label: "Complete", value: runCounts.complete, color: "var(--success)" },
+                { label: "Running", value: runCounts.running, color: "var(--info)" },
+                { label: "Errors", value: runCounts.error, color: runCounts.error > 0 ? "var(--danger)" : "var(--text-faint)" },
+              ].map((s) => (
+                <div key={s.label} style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                  <p style={{ fontFamily: "Georgia, serif", fontSize: "1.25rem", fontWeight: 700, color: s.color, lineHeight: 1 }}>
+                    {s.value}
+                  </p>
+                  <p style={{ fontSize: "0.5625rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", fontFamily: "Inter, system-ui, sans-serif" }}>
+                    {s.label}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
-        )}
+
+          {/* Recent agent runs feed */}
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderTop: "1px solid var(--border-accent)",
+              borderRadius: "2px",
+              padding: "1.125rem 1.375rem",
+            }}
+          >
+            <SectionHeader title="Recent Activity" />
+            {recentRuns.length === 0 ? (
+              <p style={{ fontSize: "0.8125rem", color: "var(--text-faint)", marginTop: "0.875rem", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+                No agent runs yet.
+              </p>
+            ) : (
+              <ul style={{ listStyle: "none", marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                {recentRuns.map((run: any) => {
+                  const proposalName = run.proposal_projects?.opportunities?.name ?? "Proposal";
+                  const label = AGENT_LABELS[run.agent_name] ?? run.agent_name.replace(/_/g, " ");
+                  const statusColor =
+                    run.status === "complete" ? "var(--success)"
+                    : run.status === "error" ? "var(--danger)"
+                    : run.status === "running" ? "var(--info)"
+                    : "var(--text-muted)";
+                  return (
+                    <li key={run.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.75rem" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontFamily: "Inter, system-ui, sans-serif", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>{label}</span>
+                          {" "}<span style={{ color: "var(--text-faint)" }}>·</span>{" "}
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{proposalName}</span>
+                        </p>
+                      </div>
+                      <span style={{ fontSize: "0.5625rem", fontWeight: 700, color: statusColor, textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0, fontFamily: "Inter, system-ui, sans-serif" }}>
+                        {run.status}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
       </main>
     </>
   );
@@ -431,12 +525,14 @@ function SanctumSection({
   viewHref,
   empty,
   emptyMessage,
+  emptyCta,
   children,
 }: {
   title: string;
   viewHref: string;
   empty: boolean;
   emptyMessage: string;
+  emptyCta?: { label: string; href: string };
   children: React.ReactNode;
 }) {
   return (
@@ -470,7 +566,7 @@ function SanctumSection({
         >
           {title}
         </h2>
-        <a
+        <Link
           href={viewHref}
           style={{
             fontSize: "0.5625rem",
@@ -483,7 +579,7 @@ function SanctumSection({
           }}
         >
           View all ›
-        </a>
+        </Link>
       </div>
 
       {empty ? (
@@ -491,14 +587,34 @@ function SanctumSection({
           style={{
             padding: "2.25rem 1.375rem",
             textAlign: "center",
-            color: "var(--text-faint)",
-            fontSize: "0.8125rem",
-            fontFamily: "Georgia, serif",
-            fontStyle: "italic",
-            letterSpacing: "0.02em",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "0.875rem",
           }}
         >
-          {emptyMessage}
+          <p style={{ color: "var(--text-faint)", fontSize: "0.8125rem", fontFamily: "Georgia, serif", fontStyle: "italic", letterSpacing: "0.02em" }}>
+            {emptyMessage}
+          </p>
+          {emptyCta && (
+            <Link
+              href={emptyCta.href}
+              style={{
+                display: "inline-block",
+                padding: "0.4375rem 1rem",
+                background: "var(--surface-accent)",
+                border: "1px solid var(--border-accent)",
+                borderRadius: "4px",
+                fontSize: "0.6875rem",
+                fontWeight: 600,
+                color: "var(--accent)",
+                textDecoration: "none",
+                letterSpacing: "0.04em",
+              }}
+            >
+              {emptyCta.label} →
+            </Link>
+          )}
         </div>
       ) : (
         <ul style={{ listStyle: "none" }}>{children}</ul>
@@ -507,52 +623,40 @@ function SanctumSection({
   );
 }
 
-function StageChip({ stage, status }: { stage: string | null; status: string }) {
+function StageChip({ status }: { status: string }) {
   const statusColors: Record<string, string> = {
     draft: "var(--text-muted)",
     in_pipeline: "var(--info)",
     awaiting_approval: "var(--warning)",
+    awaiting_review: "var(--warning)",
     approved: "var(--success)",
     submitted: "var(--success)",
     rejected: "var(--danger)",
     archived: "var(--text-muted)",
+    finalized: "var(--success)",
   };
 
   const color = statusColors[status] ?? "var(--text-muted)";
 
   return (
-    <div style={{ textAlign: "right", flexShrink: 0 }}>
-      <span
-        style={{
-          display: "inline-block",
-          padding: "2px 8px",
-          borderRadius: "2px",
-          fontSize: "0.5625rem",
-          fontWeight: 700,
-          background: `${color}18`,
-          border: `1px solid ${color}40`,
-          color,
-          textTransform: "uppercase",
-          letterSpacing: "0.07em",
-          whiteSpace: "nowrap",
-          fontFamily: "Inter, system-ui, sans-serif",
-        }}
-      >
-        {status.replace(/_/g, " ")}
-      </span>
-      {stage && (
-        <p
-          style={{
-            fontSize: "0.5625rem",
-            color: "var(--text-muted)",
-            marginTop: "3px",
-            fontFamily: "Inter, system-ui, sans-serif",
-            letterSpacing: "0.02em",
-          }}
-        >
-          {stage.replace(/_/g, " ")}
-        </p>
-      )}
-    </div>
+    <span
+      style={{
+        display: "inline-block",
+        padding: "2px 8px",
+        borderRadius: "2px",
+        fontSize: "0.5625rem",
+        fontWeight: 700,
+        background: `${color}18`,
+        border: `1px solid ${color}40`,
+        color,
+        textTransform: "uppercase",
+        letterSpacing: "0.07em",
+        whiteSpace: "nowrap",
+        fontFamily: "Inter, system-ui, sans-serif",
+        flexShrink: 0,
+      }}
+    >
+      {status.replace(/_/g, " ")}
+    </span>
   );
 }
