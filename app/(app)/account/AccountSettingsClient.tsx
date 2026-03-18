@@ -50,8 +50,12 @@ export function AccountSettingsClient({ fullName, email, role, org }: Props) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
-      const result = await updateProfile(fd);
-      showFeedback("profile", result);
+      try {
+        const result = await updateProfile(fd);
+        showFeedback("profile", result);
+      } catch (err) {
+        showFeedback("profile", { error: err instanceof Error ? err.message : "An unexpected error occurred." });
+      }
     });
   }
 
@@ -59,8 +63,12 @@ export function AccountSettingsClient({ fullName, email, role, org }: Props) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
-      const result = await updateOrganization(fd);
-      showFeedback("organization", result);
+      try {
+        const result = await updateOrganization(fd);
+        showFeedback("organization", result);
+      } catch (err) {
+        showFeedback("organization", { error: err instanceof Error ? err.message : "An unexpected error occurred." });
+      }
     });
   }
 
@@ -69,9 +77,13 @@ export function AccountSettingsClient({ fullName, email, role, org }: Props) {
     const fd = new FormData(e.currentTarget);
     const form = e.currentTarget;
     startTransition(async () => {
-      const result = await changePassword(fd);
-      showFeedback("security", result);
-      if (result.success) form.reset();
+      try {
+        const result = await changePassword(fd);
+        showFeedback("security", result);
+        if (result.success) form.reset();
+      } catch (err) {
+        showFeedback("security", { error: err instanceof Error ? err.message : "An unexpected error occurred." });
+      }
     });
   }
 
