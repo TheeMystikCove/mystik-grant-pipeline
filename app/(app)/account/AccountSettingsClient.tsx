@@ -7,6 +7,7 @@ import {
   changePassword,
   disconnectGoogle,
   setGoogleCalendar,
+  inviteTeamMember,
 } from "./actions";
 
 interface OrgData {
@@ -19,6 +20,14 @@ interface OrgData {
   annual_budget_range: string | null;
 }
 
+interface TeamMember {
+  id: string;
+  full_name: string | null;
+  email: string;
+  role: string;
+  created_at: string;
+}
+
 interface Props {
   fullName: string | null;
   email: string;
@@ -28,6 +37,7 @@ interface Props {
   googleConnected: boolean;
   googleCalendarId: string | null;
   feedbackFromUrl?: { error?: string; success?: string };
+  teamMembers: TeamMember[];
 }
 
 const ENTITY_TYPES = [
@@ -45,6 +55,7 @@ const TABS = [
   { id: "organization", label: "Organization", icon: "⊞" },
   { id: "security", label: "Security", icon: "◈" },
   { id: "integrations", label: "Integrations", icon: "◉" },
+  { id: "team", label: "Team", icon: "◑" },
 ];
 
 export function AccountSettingsClient({
@@ -56,6 +67,7 @@ export function AccountSettingsClient({
   googleConnected,
   googleCalendarId,
   feedbackFromUrl,
+  teamMembers,
 }: Props) {
   const [activeTab, setActiveTab] = useState(initialTab ?? "profile");
   const [isPending, startTransition] = useTransition();
@@ -263,6 +275,15 @@ export function AccountSettingsClient({
               googleCalendarId={googleCalendarId}
             />
           </div>
+        )}
+
+        {/* Team tab */}
+        {activeTab === "team" && (
+          <TeamTab
+            teamMembers={teamMembers}
+            userRole={role}
+            currentEmail={email}
+          />
         )}
       </div>
     </div>
@@ -472,6 +493,136 @@ function GoogleCalendarTab({
               Disconnect
             </button>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Team Tab ─────────────────────────────────────────────────────────────────
+
+function TeamTab({
+  teamMembers,
+  userRole,
+  currentEmail,
+}: {
+  teamMembers: TeamMember[];
+  userRole: string;
+  currentEmail: string;
+}) {
+  const [inviteFeedback, setInviteFeedback] = useState<{ error?: string; success?: boolean } | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function handleInvite(e: React.SyntheticEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    startTransition(async () => {
+      try {
+        const result = await inviteTeamMember(fd);
+        setInviteFeedback(result);
+        if (result.success) {
+          form.reset();
+          setTimeout(() => setInviteFeedback(null), 4000);
+        }
+      } catch (err) {
+        setInviteFeedback({ error: err instanceof Error ? err.message : "Failed to send invitation." });
+      }
+    });
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+      <SectionHeader title="Team" subtitle="Members in your organization." />
+
+      {/* Current members */}
+      <div style={{ ...cardStyle, overflow: "hidden" }}>
+        {teamMembers.length === 0 ? (
+          <p style={{ padding: "1.25rem", fontSize: "0.8125rem", color: "var(--text-muted)", textAlign: "center" }}>
+            No team members found.
+          </p>
+        ) : (
+          teamMembers.map((member, i) => (
+            <div
+              key={member.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "0.75rem 1.25rem",
+                borderBottom: i < teamMembers.length - 1 ? "1px solid var(--border-muted)" : "none",
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", fontFamily: "Inter, system-ui, sans-serif" }}>
+                  {member.full_name ?? "(Name not set)"}
+                  {member.email === currentEmail && (
+                    <span style={{ marginLeft: "0.5rem", fontSize: "0.625rem", color: "var(--accent)", fontWeight: 700, letterSpacing: "0.06em" }}>YOU</span>
+                  )}
+                </p>
+                <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "1px" }}>{member.email}</p>
+              </div>
+              <span style={{
+                fontSize: "0.625rem",
+                fontWeight: 700,
+                color: member.role === "admin" ? "var(--accent)" : "var(--text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                background: member.role === "admin" ? "var(--surface-accent)" : "var(--surface-raised)",
+                border: `1px solid ${member.role === "admin" ? "var(--border-accent)" : "var(--border)"}`,
+                borderRadius: "4px",
+                padding: "0.1875rem 0.5rem",
+                flexShrink: 0,
+              }}>
+                {member.role.replace(/_/g, " ")}
+              </span>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Invite form — admin only */}
+      {userRole === "admin" && (
+        <div style={{ ...cardStyle, padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)" }}>Invite a Team Member</p>
+          <form onSubmit={handleInvite} style={{ display: "flex", flexDirection: "column", gap: "0.875rem" }}>
+            <Field label="Email Address" required>
+              <Input name="invite_email" type="email" placeholder="colleague@example.com" required />
+            </Field>
+            <Field label="Role">
+              <select name="invite_role" defaultValue="member" style={inputStyle}>
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
+                <option value="grant_writer">Grant Writer</option>
+                <option value="viewer">Viewer</option>
+              </select>
+            </Field>
+
+            {inviteFeedback?.error && (
+              <p style={{ fontSize: "0.75rem", color: "var(--danger)" }}>{inviteFeedback.error}</p>
+            )}
+            {inviteFeedback?.success && (
+              <p style={{ fontSize: "0.75rem", color: "var(--success)" }}>✓ Invitation sent — they&apos;ll receive an email with a sign-in link.</p>
+            )}
+
+            <div>
+              <button
+                type="submit"
+                disabled={isPending}
+                style={{
+                  padding: "0.5rem 1.25rem",
+                  background: "var(--accent)", color: "#efe8d6",
+                  border: "none", borderRadius: "6px",
+                  fontSize: "0.8125rem", fontWeight: 700,
+                  letterSpacing: "0.04em", textTransform: "uppercase",
+                  cursor: isPending ? "wait" : "pointer",
+                  opacity: isPending ? 0.7 : 1,
+                }}
+              >
+                {isPending ? "Sending…" : "Send Invitation"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

@@ -7,6 +7,14 @@ interface PageProps {
   searchParams: Promise<{ tab?: string; error?: string; success?: string }>;
 }
 
+interface TeamMember {
+  id: string;
+  full_name: string | null;
+  email: string;
+  role: string;
+  created_at: string;
+}
+
 async function getAccountData() {
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -28,6 +36,16 @@ async function getAccountData() {
         .single()
     : { data: null };
 
+  let teamMembers: TeamMember[] = [];
+  if (userRow.organization_id) {
+    const { data: members } = await supabase
+      .from("users")
+      .select("id, full_name, email, role, created_at")
+      .eq("organization_id", userRow.organization_id)
+      .order("created_at", { ascending: true });
+    teamMembers = (members ?? []) as TeamMember[];
+  }
+
   return {
     fullName: userRow.full_name,
     email: userRow.email,
@@ -35,11 +53,12 @@ async function getAccountData() {
     org: org ?? null,
     googleConnected: !!(userRow as Record<string, unknown>).google_refresh_token,
     googleCalendarId: ((userRow as Record<string, unknown>).google_calendar_id as string | null) ?? null,
+    teamMembers,
   };
 }
 
 export default async function AccountPage({ searchParams }: PageProps) {
-  const { fullName, email, role, org, googleConnected, googleCalendarId } =
+  const { fullName, email, role, org, googleConnected, googleCalendarId, teamMembers } =
     await getAccountData();
   const params = await searchParams;
   const initialTab = params.tab ?? "profile";
@@ -61,6 +80,7 @@ export default async function AccountPage({ searchParams }: PageProps) {
           googleConnected={googleConnected}
           googleCalendarId={googleCalendarId}
           feedbackFromUrl={feedbackFromUrl}
+          teamMembers={teamMembers}
         />
       </main>
     </>

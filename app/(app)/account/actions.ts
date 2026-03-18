@@ -142,3 +142,40 @@ export async function setGoogleCalendar(formData: FormData): Promise<{ error?: s
     return { error: err instanceof Error ? err.message : "Failed to update calendar." };
   }
 }
+
+// ── Invite team member ────────────────────────────────────────────────────────
+
+export async function inviteTeamMember(formData: FormData): Promise<{ error?: string; success?: boolean }> {
+  try {
+    const email = (formData.get("invite_email") as string)?.trim().toLowerCase();
+    const inviteRole = (formData.get("invite_role") as string) ?? "member";
+
+    if (!email) return { error: "Email is required." };
+
+    const supabase = await createServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated." };
+
+    const { data: inviter } = await supabase
+      .from("users")
+      .select("role, organization_id")
+      .eq("auth_user_id", user.id)
+      .single();
+
+    if (!inviter) return { error: "User record not found." };
+    if (inviter.role !== "admin") return { error: "Only admins can send invitations." };
+    if (!inviter.organization_id) return { error: "No organization found." };
+
+    const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://grant-engine.vercel.app";
+    const admin = createAdminClient();
+    const { error } = await admin.auth.admin.inviteUserByEmail(email, {
+      data: { organization_id: inviter.organization_id, role: inviteRole },
+      redirectTo: `${SITE_URL}/auth/callback?next=/onboarding`,
+    });
+
+    if (error) return { error: error.message };
+    return { success: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to send invitation." };
+  }
+}
