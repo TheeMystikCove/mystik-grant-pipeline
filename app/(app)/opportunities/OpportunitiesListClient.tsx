@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteOpportunities } from "./actions";
+import { startProposal } from "./[id]/actions";
 
 interface Opportunity {
   id: string;
@@ -143,6 +144,7 @@ export function OpportunitiesListClient({ opportunities }: Props) {
           <span>Deadline</span>
           <span>Score</span>
           <span>Status</span>
+          <span></span>
         </div>
 
         {/* Rows */}
@@ -235,6 +237,26 @@ export function OpportunitiesListClient({ opportunities }: Props) {
               }}>
                 {opp.status}
               </span>
+
+              {/* Start Proposal */}
+              {!["submitted", "awarded", "declined"].includes(opp.status) ? (
+                <form action={startProposal} onClick={(e) => e.stopPropagation()}>
+                  <input type="hidden" name="opportunity_id" value={opp.id} />
+                  <button
+                    type="submit"
+                    style={{
+                      background: "var(--accent)", color: "#efe8d6", border: "none",
+                      borderRadius: "5px", padding: "0.375rem 0.625rem",
+                      fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.04em",
+                      textTransform: "uppercase" as const, cursor: "pointer", whiteSpace: "nowrap" as const,
+                    }}
+                  >
+                    + Proposal
+                  </button>
+                </form>
+              ) : (
+                <span />
+              )}
             </div>
           );
         })}
@@ -243,7 +265,7 @@ export function OpportunitiesListClient({ opportunities }: Props) {
   );
 }
 
-const COLS = "40px 2fr 1.5fr 1fr 1fr 100px 90px";
+const COLS = "40px 2fr 1.5fr 1fr 1fr 90px 90px 100px";
 
 const emptyCard: React.CSSProperties = {
   background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px",
