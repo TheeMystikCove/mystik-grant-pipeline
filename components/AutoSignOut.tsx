@@ -1,39 +1,52 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 /**
- * Fires a beacon to /api/auth/signout when the page/iframe truly unloads.
- * Guards against false positives in Google Sites iframes where pagehide
- * can fire during in-app client-side navigations.
+ * Fires a beacon to /api/auth/signout when the page/iframe truly unloads
+ * AND the user has been inactive for at least 10 minutes.
+ *
+ * The inactivity check prevents false positives where pagehide fires
+ * while the user is actively filling out forms (e.g. account settings),
+ * switching tabs briefly, or triggering soft navigations in iframe environments.
  *
  * pagehide fires when:
- *  - The browser tab or window is closed                        → sign out ✓
- *  - The parent Google Sites page navigates away (kills iframe) → sign out ✓
+ *  - The browser tab or window is closed                        → sign out ✓ (if inactive)
+ *  - The parent Google Sites page navigates away (kills iframe) → sign out ✓ (if inactive)
  *  - The page enters bfcache (persisted=true)                   → ignored  ✗
- *  - In-app navigation within the first 2s of mount             → ignored  ✗
+ *  - User was recently active (< 10 min)                        → ignored  ✗
  */
 export function AutoSignOut() {
+  const lastActivityRef = useRef(Date.now());
+
   useEffect(() => {
-    // Arm after 2 seconds — ignores pagehide artifacts from fast
-    // in-app navigations that some iframe environments fire spuriously.
-    let armed = false;
-    const armTimer = setTimeout(() => {
-      armed = true;
-    }, 2000);
+    const INACTIVE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
+
+    function trackActivity() {
+      lastActivityRef.current = Date.now();
+    }
+
+    document.addEventListener("mousedown", trackActivity, { passive: true });
+    document.addEventListener("keydown", trackActivity, { passive: true });
+    document.addEventListener("touchstart", trackActivity, { passive: true });
+    document.addEventListener("scroll", trackActivity, { passive: true });
 
     const handlePageHide = (event: PageTransitionEvent) => {
       // persisted=true → page going into bfcache, not being destroyed.
       if (event.persisted) return;
-      // Not yet armed → this is a navigation artifact, not a real exit.
-      if (!armed) return;
+      // User was active recently — this is likely a false positive.
+      const inactiveMs = Date.now() - lastActivityRef.current;
+      if (inactiveMs < INACTIVE_THRESHOLD_MS) return;
       navigator.sendBeacon("/api/auth/signout");
     };
 
     window.addEventListener("pagehide", handlePageHide);
     return () => {
-      clearTimeout(armTimer);
       window.removeEventListener("pagehide", handlePageHide);
+      document.removeEventListener("mousedown", trackActivity);
+      document.removeEventListener("keydown", trackActivity);
+      document.removeEventListener("touchstart", trackActivity);
+      document.removeEventListener("scroll", trackActivity);
     };
   }, []);
 
