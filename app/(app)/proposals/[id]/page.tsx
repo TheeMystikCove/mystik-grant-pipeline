@@ -205,6 +205,30 @@ export default async function ProposalWorkspacePage({
               </Link>
             </div>
           )}
+
+          {/* Download .docx — shown once final_grant_writer has run */}
+          {completedSet.has("final_grant_writer") && (
+            <div style={{ padding: "0 1rem 1rem" }}>
+              <a
+                href={`/api/proposals/${id}/download`}
+                download
+                style={{
+                  display: "block",
+                  textAlign: "center",
+                  padding: "0.5rem",
+                  borderRadius: "6px",
+                  border: "1px solid var(--success)",
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  color: "var(--success)",
+                  textDecoration: "none",
+                  letterSpacing: "0.03em",
+                }}
+              >
+                ⬇ Download .docx
+              </a>
+            </div>
+          )}
         </aside>
 
         {/* ── Right panel: content area ── */}
