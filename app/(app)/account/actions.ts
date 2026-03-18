@@ -95,3 +95,50 @@ export async function changePassword(formData: FormData): Promise<{ error?: stri
     return { error: err instanceof Error ? err.message : "Failed to update password." };
   }
 }
+
+// ── Disconnect Google Calendar ────────────────────────────────────────────────
+
+export async function disconnectGoogle(): Promise<{ error?: string; success?: boolean }> {
+  try {
+    const supabase = await createServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated." };
+
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from("users")
+      .update({ google_refresh_token: null, google_calendar_id: null })
+      .eq("auth_user_id", user.id);
+
+    if (error) return { error: error.message };
+    revalidatePath("/account");
+    return { success: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to disconnect." };
+  }
+}
+
+// ── Set preferred Google Calendar ─────────────────────────────────────────────
+
+export async function setGoogleCalendar(formData: FormData): Promise<{ error?: string; success?: boolean }> {
+  try {
+    const calendarId = (formData.get("calendar_id") as string)?.trim();
+    if (!calendarId) return { error: "Calendar ID is required." };
+
+    const supabase = await createServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated." };
+
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from("users")
+      .update({ google_calendar_id: calendarId })
+      .eq("auth_user_id", user.id);
+
+    if (error) return { error: error.message };
+    revalidatePath("/account");
+    return { success: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to update calendar." };
+  }
+}

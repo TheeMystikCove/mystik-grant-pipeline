@@ -1,7 +1,13 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { updateProfile, updateOrganization, changePassword } from "./actions";
+import { useState, useTransition, useEffect } from "react";
+import {
+  updateProfile,
+  updateOrganization,
+  changePassword,
+  disconnectGoogle,
+  setGoogleCalendar,
+} from "./actions";
 
 interface OrgData {
   legal_name: string;
@@ -18,6 +24,10 @@ interface Props {
   email: string;
   role: string;
   org: OrgData | null;
+  initialTab?: string;
+  googleConnected: boolean;
+  googleCalendarId: string | null;
+  feedbackFromUrl?: { error?: string; success?: string };
 }
 
 const ENTITY_TYPES = [
@@ -34,10 +44,20 @@ const TABS = [
   { id: "profile", label: "Profile", icon: "◎" },
   { id: "organization", label: "Organization", icon: "⊞" },
   { id: "security", label: "Security", icon: "◈" },
+  { id: "integrations", label: "Integrations", icon: "◉" },
 ];
 
-export function AccountSettingsClient({ fullName, email, role, org }: Props) {
-  const [activeTab, setActiveTab] = useState("profile");
+export function AccountSettingsClient({
+  fullName,
+  email,
+  role,
+  org,
+  initialTab,
+  googleConnected,
+  googleCalendarId,
+  feedbackFromUrl,
+}: Props) {
+  const [activeTab, setActiveTab] = useState(initialTab ?? "profile");
   const [isPending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<{ tab: string; error?: string; success?: boolean } | null>(null);
 
@@ -46,7 +66,7 @@ export function AccountSettingsClient({ fullName, email, role, org }: Props) {
     if (result.success) setTimeout(() => setFeedback(null), 3000);
   }
 
-  function handleProfileSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleProfileSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
@@ -59,7 +79,7 @@ export function AccountSettingsClient({ fullName, email, role, org }: Props) {
     });
   }
 
-  function handleOrgSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleOrgSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
@@ -72,7 +92,7 @@ export function AccountSettingsClient({ fullName, email, role, org }: Props) {
     });
   }
 
-  function handlePasswordSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handlePasswordSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const form = e.currentTarget;
@@ -206,7 +226,254 @@ export function AccountSettingsClient({ fullName, email, role, org }: Props) {
             <FormFooter isPending={isPending} feedback={feedback?.tab === "security" ? feedback : null} label="Update Password" />
           </form>
         )}
+
+        {/* Integrations tab */}
+        {activeTab === "integrations" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+            <SectionHeader title="Integrations" subtitle="Connect external services to enhance your workflow." />
+
+            {/* URL feedback from OAuth redirect */}
+            {feedbackFromUrl?.error && (
+              <div style={{
+                padding: "0.75rem 1rem",
+                background: "rgba(180,60,60,0.08)",
+                border: "1px solid var(--danger)",
+                borderRadius: "6px",
+                fontSize: "0.8125rem",
+                color: "var(--danger)",
+              }}>
+                {feedbackFromUrl.error}
+              </div>
+            )}
+            {feedbackFromUrl?.success && (
+              <div style={{
+                padding: "0.75rem 1rem",
+                background: "rgba(60,160,80,0.08)",
+                border: "1px solid var(--success)",
+                borderRadius: "6px",
+                fontSize: "0.8125rem",
+                color: "var(--success)",
+              }}>
+                {feedbackFromUrl.success}
+              </div>
+            )}
+
+            <GoogleCalendarTab
+              googleConnected={googleConnected}
+              googleCalendarId={googleCalendarId}
+            />
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+// ─── Google Calendar Tab ──────────────────────────────────────────────────────
+
+function GoogleCalendarTab({
+  googleConnected,
+  googleCalendarId,
+}: {
+  googleConnected: boolean;
+  googleCalendarId: string | null;
+}) {
+  const [calendars, setCalendars] = useState<{ id: string; summary: string; primary?: boolean }[]>([]);
+  const [selectedCalendar, setSelectedCalendar] = useState(googleCalendarId ?? "primary");
+  const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "done" | "error">("idle");
+  const [syncResult, setSyncResult] = useState<{ synced: number; errors: number } | null>(null);
+  const [calendarFeedback, setCalendarFeedback] = useState<{ error?: string; success?: boolean } | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!googleConnected) return;
+    fetch("/api/google/calendars")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.calendars) setCalendars(data.calendars);
+      })
+      .catch(() => {/* silently ignore */});
+  }, [googleConnected]);
+
+  async function handleSync() {
+    setSyncStatus("syncing");
+    setSyncResult(null);
+    try {
+      const res = await fetch("/api/calendar/sync", { method: "POST" });
+      const data = await res.json();
+      setSyncResult(data);
+      setSyncStatus(res.ok ? "done" : "error");
+    } catch {
+      setSyncStatus("error");
+    }
+  }
+
+  function handleSaveCalendar() {
+    const fd = new FormData();
+    fd.set("calendar_id", selectedCalendar);
+    startTransition(async () => {
+      try {
+        const result = await setGoogleCalendar(fd);
+        setCalendarFeedback(result);
+        if (result.success) setTimeout(() => setCalendarFeedback(null), 3000);
+      } catch (err) {
+        setCalendarFeedback({ error: err instanceof Error ? err.message : "Failed to save." });
+      }
+    });
+  }
+
+  function handleDisconnect() {
+    startTransition(async () => {
+      try {
+        await disconnectGoogle();
+        // Page will revalidate and re-render with googleConnected = false
+        window.location.reload();
+      } catch {
+        setCalendarFeedback({ error: "Failed to disconnect Google Calendar." });
+      }
+    });
+  }
+
+  return (
+    <div style={{ ...cardStyle, padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+      {/* Header row */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <span style={{ fontSize: "1.25rem", lineHeight: 1 }}>📅</span>
+          <div>
+            <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+              Google Calendar
+            </p>
+            <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: "1px" }}>
+              Sync grant deadlines directly to your calendar
+            </p>
+          </div>
+        </div>
+        {googleConnected && (
+          <span style={{
+            fontSize: "0.6875rem", fontWeight: 700, color: "var(--success)",
+            background: "rgba(60,160,80,0.1)", border: "1px solid var(--success)",
+            borderRadius: "4px", padding: "0.1875rem 0.5rem", letterSpacing: "0.04em",
+          }}>
+            ✓ Connected
+          </span>
+        )}
+      </div>
+
+      {!googleConnected ? (
+        /* ── Not connected ── */
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+            Connect Google Calendar to automatically sync all grant deadlines directly to a specific calendar.
+          </p>
+          <div>
+            <a
+              href="/auth/google"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "0.5rem",
+                padding: "0.5625rem 1.25rem",
+                background: "var(--accent)", color: "#efe8d6",
+                border: "none", borderRadius: "6px",
+                fontSize: "0.8125rem", fontWeight: 700,
+                letterSpacing: "0.04em", textTransform: "uppercase",
+                textDecoration: "none", cursor: "pointer",
+              }}
+            >
+              Connect Google Calendar
+            </a>
+          </div>
+        </div>
+      ) : (
+        /* ── Connected ── */
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {/* Calendar picker */}
+          <Field label="Sync deadlines to this calendar">
+            <select
+              value={selectedCalendar}
+              onChange={(e) => setSelectedCalendar(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="primary">Primary Calendar</option>
+              {calendars
+                .filter((c) => c.id !== "primary")
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.summary}{c.primary ? " (primary)" : ""}
+                  </option>
+                ))}
+            </select>
+          </Field>
+
+          {/* Calendar feedback */}
+          {calendarFeedback?.error && (
+            <p style={{ fontSize: "0.75rem", color: "var(--danger)" }}>{calendarFeedback.error}</p>
+          )}
+          {calendarFeedback?.success && (
+            <p style={{ fontSize: "0.75rem", color: "var(--success)" }}>✓ Calendar saved</p>
+          )}
+
+          {/* Action buttons */}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+            {/* Save calendar */}
+            <button
+              onClick={handleSaveCalendar}
+              disabled={isPending}
+              style={{
+                padding: "0.5rem 1rem",
+                background: "var(--accent)", color: "#efe8d6",
+                border: "none", borderRadius: "6px",
+                fontSize: "0.8125rem", fontWeight: 700,
+                letterSpacing: "0.04em", textTransform: "uppercase",
+                cursor: isPending ? "wait" : "pointer",
+                opacity: isPending ? 0.7 : 1,
+              }}
+            >
+              {isPending ? "Saving…" : "Save Calendar"}
+            </button>
+
+            {/* Sync button */}
+            {syncStatus === "syncing" ? (
+              <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>Syncing…</span>
+            ) : syncStatus === "done" && syncResult ? (
+              <span style={{ fontSize: "0.8125rem", color: "var(--success)", fontWeight: 600 }}>
+                ✓ {syncResult.synced} synced{syncResult.errors > 0 ? ` · ${syncResult.errors} failed` : ""}
+              </span>
+            ) : syncStatus === "error" ? (
+              <span style={{ fontSize: "0.8125rem", color: "var(--danger)" }}>Sync failed — try again</span>
+            ) : (
+              <button
+                onClick={handleSync}
+                style={{
+                  padding: "0.5rem 1rem",
+                  background: "var(--surface-raised)", color: "var(--accent)",
+                  border: "1px solid var(--border-accent)", borderRadius: "6px",
+                  fontSize: "0.8125rem", fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Sync Deadlines Now
+              </button>
+            )}
+
+            {/* Disconnect */}
+            <button
+              onClick={handleDisconnect}
+              disabled={isPending}
+              style={{
+                marginLeft: "auto",
+                padding: "0.5rem 1rem",
+                background: "transparent", color: "var(--danger)",
+                border: "1px solid var(--danger)", borderRadius: "6px",
+                fontSize: "0.75rem", fontWeight: 600,
+                cursor: isPending ? "wait" : "pointer",
+                opacity: isPending ? 0.6 : 1,
+              }}
+            >
+              Disconnect
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

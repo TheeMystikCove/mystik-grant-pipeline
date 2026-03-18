@@ -3,6 +3,10 @@ import { createServerClient } from "@/lib/supabase/server";
 import { Topbar } from "@/components/layout/topbar";
 import { AccountSettingsClient } from "./AccountSettingsClient";
 
+interface PageProps {
+  searchParams: Promise<{ tab?: string; error?: string; success?: string }>;
+}
+
 async function getAccountData() {
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -10,7 +14,7 @@ async function getAccountData() {
 
   const { data: userRow } = await supabase
     .from("users")
-    .select("full_name, email, role, organization_id")
+    .select("full_name, email, role, organization_id, google_refresh_token, google_calendar_id")
     .eq("auth_user_id", user.id)
     .single();
 
@@ -29,11 +33,20 @@ async function getAccountData() {
     email: userRow.email,
     role: userRow.role,
     org: org ?? null,
+    googleConnected: !!(userRow as Record<string, unknown>).google_refresh_token,
+    googleCalendarId: ((userRow as Record<string, unknown>).google_calendar_id as string | null) ?? null,
   };
 }
 
-export default async function AccountPage() {
-  const { fullName, email, role, org } = await getAccountData();
+export default async function AccountPage({ searchParams }: PageProps) {
+  const { fullName, email, role, org, googleConnected, googleCalendarId } =
+    await getAccountData();
+  const params = await searchParams;
+  const initialTab = params.tab ?? "profile";
+  const feedbackFromUrl =
+    params.error || params.success
+      ? { error: params.error, success: params.success }
+      : undefined;
 
   return (
     <>
@@ -44,6 +57,10 @@ export default async function AccountPage() {
           email={email}
           role={role}
           org={org}
+          initialTab={initialTab}
+          googleConnected={googleConnected}
+          googleCalendarId={googleCalendarId}
+          feedbackFromUrl={feedbackFromUrl}
         />
       </main>
     </>
