@@ -67,10 +67,11 @@ export function AccountSettingsClient({ fullName, email, role, org }: Props) {
   function handlePasswordSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget;
     startTransition(async () => {
       const result = await changePassword(fd);
       showFeedback("security", result);
-      if (result.success) e.currentTarget.reset();
+      if (result.success) form.reset();
     });
   }
 
