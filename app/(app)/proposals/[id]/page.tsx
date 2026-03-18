@@ -7,10 +7,20 @@ import { approveGate } from "./actions";
 import { RunAgentButton } from "@/components/proposals/RunAgentButton";
 import type { AgentName, AgentRun, ProposalSection } from "@/types";
 
+// Fields the user must fill before agents can run
+const REQUIRED_INTAKE_FIELDS = [
+  "organization_name",
+  "mission_statement",
+  "program_concept",
+  "problem_statement",
+  "funding_amount_requested",
+  "signatory_name",
+];
+
 async function getProposalWorkspace(id: string) {
   const supabase = await createServerClient();
 
-  const [{ data: proposal }, { data: agentRuns }, { data: sections }, { data: qaReports }] =
+  const [{ data: proposal }, { data: agentRuns }, { data: sections }, { data: qaReports }, { data: intake }] =
     await Promise.all([
       supabase
         .from("proposal_projects")
@@ -33,13 +43,26 @@ async function getProposalWorkspace(id: string) {
         .eq("proposal_project_id", id)
         .order("created_at", { ascending: false })
         .limit(1),
+      supabase
+        .from("project_intake")
+        .select("project_snapshot_json")
+        .eq("proposal_project_id", id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single(),
     ]);
+
+  const snapshot = (intake?.project_snapshot_json ?? {}) as Record<string, string>;
+  const missingFields = REQUIRED_INTAKE_FIELDS.filter((f) => !snapshot[f]?.trim());
+  const intakeComplete = missingFields.length === 0;
 
   return {
     proposal,
     agentRuns: (agentRuns ?? []) as AgentRun[],
     sections: (sections ?? []) as ProposalSection[],
     qaReport: qaReports?.[0] ?? null,
+    intakeComplete,
+    missingFields,
   };
 }
 
@@ -90,7 +113,7 @@ export default async function ProposalWorkspacePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { proposal, agentRuns, sections, qaReport } = await getProposalWorkspace(id);
+  const { proposal, agentRuns, sections, qaReport, intakeComplete, missingFields } = await getProposalWorkspace(id);
 
   if (!proposal) notFound();
 
@@ -212,6 +235,8 @@ export default async function ProposalWorkspacePage({
                 proposalProjectId={id}
                 agentName={nextPendingAgent}
                 pipelineSequence={ALL_PIPELINE}
+                intakeComplete={intakeComplete}
+                missingFields={missingFields}
               />
               <Link
                 href={`/proposals/${id}/finalize`}

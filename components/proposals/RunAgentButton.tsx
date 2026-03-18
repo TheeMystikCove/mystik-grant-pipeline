@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 
 interface Props {
   proposalProjectId: string;
-  agentName: string;        // first unrun agent determined by server
-  pipelineSequence: string[]; // full ordered pipeline so we can advance locally
+  agentName: string;
+  pipelineSequence: string[];
+  intakeComplete: boolean;
+  missingFields: string[];
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -24,14 +26,13 @@ const STAGE_LABELS: Record<string, string> = {
   final_grant_writer: "Final Grant Writer",
 };
 
-export function RunAgentButton({ proposalProjectId, agentName, pipelineSequence }: Props) {
+export function RunAgentButton({ proposalProjectId, agentName, pipelineSequence, intakeComplete, missingFields }: Props) {
   const router = useRouter();
 
-  // activeAgent tracks which agent the button will run next.
-  // Initialized from server prop; advances locally on completion.
   const [activeAgent, setActiveAgent] = useState(agentName);
   const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showIntakeModal, setShowIntakeModal] = useState(false);
 
   const label = STAGE_LABELS[activeAgent] ?? activeAgent.replace(/_/g, " ");
   const currentIdx = pipelineSequence.indexOf(activeAgent);
@@ -42,6 +43,10 @@ export function RunAgentButton({ proposalProjectId, agentName, pipelineSequence 
     : null;
 
   async function handleRun() {
+    if (!intakeComplete) {
+      setShowIntakeModal(true);
+      return;
+    }
     setStatus("running");
     setErrorMsg(null);
 
@@ -163,16 +168,96 @@ export function RunAgentButton({ proposalProjectId, agentName, pipelineSequence 
 
   // idle — show the next agent to run, with a hint about what follows
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
-      <button onClick={handleRun} style={btnStyle}>
-        ▶ Run {label}
-      </button>
-      {nextLabel && (
-        <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", textAlign: "center", margin: 0 }}>
-          Next: {nextLabel}
-        </p>
+    <>
+      {/* Intake gate modal */}
+      {showIntakeModal && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 500,
+            background: "rgba(0,0,0,0.65)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: "1.5rem",
+          }}
+          onClick={() => setShowIntakeModal(false)}
+        >
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border-accent)",
+              borderRadius: "12px",
+              padding: "1.75rem",
+              maxWidth: "420px",
+              width: "100%",
+              boxShadow: "0 16px 48px rgba(0,0,0,0.5)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p style={{ fontSize: "0.5rem", color: "var(--accent)", letterSpacing: "0.14em", textTransform: "uppercase", fontWeight: 700, marginBottom: "0.75rem" }}>
+              ◆ ACTION REQUIRED
+            </p>
+            <h2 style={{ fontFamily: "Georgia, serif", fontSize: "1.0625rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.625rem", lineHeight: 1.3 }}>
+              Complete Your Intake Form
+            </h2>
+            <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", lineHeight: 1.65, marginBottom: "1rem" }}>
+              The pipeline agents need your organization data, project description, and budget details to produce accurate results. Please fill in the required fields before running any agents.
+            </p>
+
+            {missingFields.length > 0 && (
+              <div style={{ background: "var(--surface-accent)", border: "1px solid var(--border)", borderRadius: "6px", padding: "0.75rem 1rem", marginBottom: "1.25rem" }}>
+                <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.4rem" }}>
+                  Missing fields
+                </p>
+                <ul style={{ margin: 0, padding: "0 0 0 1rem", display: "flex", flexDirection: "column", gap: "2px" }}>
+                  {missingFields.map((f) => (
+                    <li key={f} style={{ fontSize: "0.75rem", color: "var(--danger)" }}>
+                      {f.replace(/_/g, " ")}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: "0.625rem" }}>
+              <a
+                href={`/proposals/${proposalProjectId}/intake`}
+                style={{
+                  flex: 1, display: "block", textAlign: "center",
+                  background: "var(--accent)", color: "#efe8d6",
+                  borderRadius: "6px", padding: "0.5625rem",
+                  fontSize: "0.8125rem", fontWeight: 700,
+                  letterSpacing: "0.04em", textTransform: "uppercase",
+                  textDecoration: "none",
+                }}
+              >
+                Go to Intake Form
+              </a>
+              <button
+                onClick={() => setShowIntakeModal(false)}
+                style={{
+                  background: "transparent", color: "var(--text-muted)",
+                  border: "1px solid var(--border)", borderRadius: "6px",
+                  padding: "0.5625rem 1rem", fontSize: "0.8125rem",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.375rem" }}>
+        <button onClick={handleRun} style={btnStyle}>
+          ▶ Run {label}
+        </button>
+        {nextLabel && (
+          <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", textAlign: "center", margin: 0 }}>
+            Next: {nextLabel}
+          </p>
+        )}
+      </div>
+    </>
   );
 }
 
