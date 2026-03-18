@@ -34,26 +34,63 @@ export default async function OpportunityDetailPage({
         title={opp.name}
         subtitle={opp.funder_name}
         action={
-          !["submitted", "awarded", "declined"].includes(opp.status) ? (
-            <form action={startProposal}>
-              <input type="hidden" name="opportunity_id" value={opp.id} />
-              <button
-                type="submit"
-                style={{
-                  background: "var(--accent)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "0.4375rem 0.875rem",
-                  fontSize: "0.8125rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Start Proposal
-              </button>
-            </form>
-          ) : undefined
+          <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
+            {opp.deadline && (() => {
+              const d = new Date(opp.deadline);
+              const pad = (n: number) => String(n).padStart(2, "0");
+              const fmt = (date: Date) =>
+                `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}`;
+              const end = new Date(d.getTime() + 86400000);
+              const gcUrl =
+                `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+                `&text=${encodeURIComponent(`DEADLINE: ${opp.name}`)}` +
+                `&dates=${fmt(d)}%2F${fmt(end)}` +
+                `&details=${encodeURIComponent(`Funder: ${opp.funder_name}\nManaged via Grant Engine`)}`;
+              return (
+                <a
+                  href={gcUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Add deadline to Google Calendar"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.375rem",
+                    padding: "0.4375rem 0.75rem",
+                    background: "var(--surface)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "6px",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    color: "var(--text-secondary)",
+                    textDecoration: "none",
+                  }}
+                >
+                  📅 Add to Calendar
+                </a>
+              );
+            })()}
+            {!["submitted", "awarded", "declined"].includes(opp.status) && (
+              <form action={startProposal}>
+                <input type="hidden" name="opportunity_id" value={opp.id} />
+                <button
+                  type="submit"
+                  style={{
+                    background: "var(--accent)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "6px",
+                    padding: "0.4375rem 0.875rem",
+                    fontSize: "0.8125rem",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Start Proposal
+                </button>
+              </form>
+            )}
+          </div>
         }
       />
 

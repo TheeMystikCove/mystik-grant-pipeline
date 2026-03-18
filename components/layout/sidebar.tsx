@@ -6,6 +6,7 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: "⊞" },
   { href: "/opportunities", label: "Opportunities", icon: "◎" },
   { href: "/proposals", label: "Proposals", icon: "◈" },
+  { href: "/calendar", label: "Calendar", icon: "◷" },
 ];
 
 async function getCurrentUser() {
