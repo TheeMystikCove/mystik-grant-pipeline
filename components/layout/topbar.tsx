@@ -1,4 +1,3 @@
-import { UserMenu } from "./UserMenu";
 
 interface TopbarProps {
   title: string;
@@ -77,10 +76,11 @@ export function Topbar({ title, subtitle, action }: TopbarProps) {
       </div>
 
       {/* Actions */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-        {action}
-        <UserMenu />
-      </div>
+      {action && (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          {action}
+        </div>
+      )}
     </header>
   );
 }

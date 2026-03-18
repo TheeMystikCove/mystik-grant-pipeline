@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { createServerClient } from "@/lib/supabase/server";
+import { SidebarUserMenu } from "./SidebarUserMenu";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: "⊞" },
@@ -6,7 +8,20 @@ const NAV = [
   { href: "/proposals", label: "Proposals", icon: "◈" },
 ];
 
-export function Sidebar() {
+async function getCurrentUser() {
+  const supabase = await createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("users")
+    .select("full_name, email")
+    .eq("auth_user_id", user.id)
+    .single();
+  return data ?? { full_name: null, email: user.email ?? "" };
+}
+
+export async function Sidebar() {
+  const user = await getCurrentUser();
   return (
     <aside
       style={{
@@ -157,72 +172,11 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Ornamental divider */}
-      <div
-        style={{
-          margin: "0 1.375rem",
-          display: "flex",
-          alignItems: "center",
-          gap: "0.5rem",
-          padding: "0.75rem 0",
-        }}
-      >
-        <div style={{ flex: 1, height: "1px", background: "var(--border-muted)" }} />
-        <span
-          style={{
-            fontSize: "0.375rem",
-            color: "var(--ornament)",
-            letterSpacing: "0.2em",
-          }}
-        >
-          ◆
-        </span>
-        <div style={{ flex: 1, height: "1px", background: "var(--border-muted)" }} />
-      </div>
-
-      {/* Org footer */}
-      <div style={{ padding: "0.5rem 1.375rem 1.375rem" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.4375rem",
-            marginBottom: "0.1875rem",
-          }}
-        >
-          <div
-            style={{
-              width: "4px",
-              height: "4px",
-              background: "var(--accent)",
-              borderRadius: "50%",
-              flexShrink: 0,
-              opacity: 0.7,
-            }}
-          />
-          <p
-            style={{
-              fontFamily: "Inter, system-ui, sans-serif",
-              fontSize: "0.625rem",
-              color: "var(--text-muted)",
-              letterSpacing: "0.03em",
-            }}
-          >
-            Thee Mystik Universal
-          </p>
-        </div>
-        <p
-          style={{
-            fontFamily: "Georgia, serif",
-            fontSize: "0.5625rem",
-            color: "var(--text-faint)",
-            fontStyle: "italic",
-            letterSpacing: "0.04em",
-            paddingLeft: "0.8125rem",
-          }}
-        >
-          Holdings Corp.
-        </p>
+      {/* User menu at bottom */}
+      <div style={{ paddingBottom: "0.5rem" }}>
+        {user ? (
+          <SidebarUserMenu fullName={user.full_name} email={user.email} />
+        ) : null}
       </div>
     </aside>
   );
