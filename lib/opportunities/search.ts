@@ -1,5 +1,6 @@
 import { callAgent } from "@/lib/claude/call-agent";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { searchGrantsGov } from "./grants-gov";
 import type { FunderType } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -30,88 +31,149 @@ export interface ScoutedOpportunity {
   created_at: string;
 }
 
-// ─── Main search function ─────────────────────────────────────────────────────
+// ─── Main search ──────────────────────────────────────────────────────────────
 
 export async function searchGrantOpportunities(
   params: SearchParams
 ): Promise<ScoutedOpportunity[]> {
   const supabase = createAdminClient();
 
-  // Load org profile to give the scout context
-  const { data: org } = await supabase
-    .from("organizations")
-    .select("legal_name, display_name, entity_type, mission, geography")
-    .eq("id", params.organizationId)
-    .single();
+  // Load org profile for Claude context
+  const [{ data: org }, { data: profile }] = await Promise.all([
+    supabase
+      .from("organizations")
+      .select("legal_name, display_name, entity_type, mission, geography")
+      .eq("id", params.organizationId)
+      .single(),
+    supabase
+      .from("organization_profiles")
+      .select("target_populations_json, strategic_priorities_json")
+      .eq("organization_id", params.organizationId)
+      .single(),
+  ]);
 
-  const { data: profile } = await supabase
-    .from("organization_profiles")
-    .select("target_populations_json, strategic_priorities_json")
-    .eq("organization_id", params.organizationId)
-    .single();
+  // ── Source 1: Grants.gov live API (federal) ──────────────────────────────
+  // Run in parallel with the Claude scout
+  const grantsGovPromise = (params.funderType === "" || params.funderType === "federal")
+    ? searchGrantsGov({
+        keywords: params.keywords,
+        programArea: params.programArea,
+        geography: params.geography,
+        funderType: params.funderType,
+        limit: 15,
+      }).catch((err) => {
+        console.warn("[search] grants.gov error:", err);
+        return [];
+      })
+    : Promise.resolve([]);
 
-  // Build scout input
-  const scoutInput = {
-    organization_name: org?.display_name ?? org?.legal_name ?? "Unknown Organization",
-    organization_type: org?.entity_type ?? "nonprofit",
-    mission: org?.mission ?? "",
-    org_geography: org?.geography ?? "",
-    target_populations: profile?.target_populations_json ?? [],
-    strategic_priorities: profile?.strategic_priorities_json ?? [],
-    search_keywords: params.keywords
-      .split(",")
-      .map((k) => k.trim())
-      .filter(Boolean),
-    geography_filter: params.geography,
-    funder_type_filter: params.funderType || "all",
-    program_area_filter: params.programArea,
-    count_requested: 10,
-    search_mode: "on_demand",
-  };
+  // ── Source 2: Claude scout (foundations, state, corporate) ───────────────
+  const claudePromise = (params.funderType === "" || params.funderType !== "federal")
+    ? callAgent({
+        agentName: "grant_opportunity_scout",
+        input: {
+          organization_name: org?.display_name ?? org?.legal_name ?? "Unknown",
+          organization_type: org?.entity_type ?? "nonprofit",
+          mission: org?.mission ?? "",
+          org_geography: org?.geography ?? "",
+          target_populations: profile?.target_populations_json ?? [],
+          strategic_priorities: profile?.strategic_priorities_json ?? [],
+          search_keywords: params.keywords.split(",").map((k) => k.trim()).filter(Boolean),
+          geography_filter: params.geography,
+          funder_type_filter: params.funderType || "all_non_federal",
+          program_area_filter: params.programArea,
+          current_date: new Date().toISOString().split("T")[0],
+          note: "Federal grants are already covered by the Grants.gov live API. Focus exclusively on private foundations, community foundations, state funders, and corporate programs.",
+        },
+      }).catch((err) => {
+        console.warn("[search] claude scout error:", err);
+        return null;
+      })
+    : Promise.resolve(null);
 
-  // Call the scout agent
-  const output = await callAgent({
-    agentName: "grant_opportunity_scout",
-    input: scoutInput,
-  });
+  const [grantsGovResults, claudeOutput] = await Promise.all([
+    grantsGovPromise,
+    claudePromise,
+  ]);
 
-  // Extract opportunity list from structured output
-  const raw = output.structured_output;
-  const list: Record<string, unknown>[] = Array.isArray(raw?.opportunities)
+  // ── Normalize Grants.gov results ─────────────────────────────────────────
+  const federalRows = grantsGovResults.map((g) => ({
+    organization_id: params.organizationId,
+    funder_name: g.agency_name || "U.S. Federal Government",
+    name: g.opportunity_title,
+    program_area: g.funding_categories
+      .map((c) => c)
+      .join(", ") || params.programArea || null,
+    funder_type: "federal" as FunderType,
+    deadline: g.close_date ?? null,
+    award_min: g.award_floor,
+    award_max: g.award_ceiling,
+    geography: "National",
+    source_url: g.opportunity_url,
+    eligibility_text: g.eligible_applicants.join("; ") || null,
+    notes: g.summary_description
+      ? g.summary_description.slice(0, 800)
+      : null,
+    status: "new",
+    verification_status: "source_verified", // real API data
+  }));
+
+  // ── Normalize Claude results ──────────────────────────────────────────────
+  const raw = claudeOutput?.structured_output;
+  const claudeList: Record<string, unknown>[] = Array.isArray(raw?.opportunities)
     ? (raw.opportunities as Record<string, unknown>[])
     : Array.isArray(raw?.results)
     ? (raw.results as Record<string, unknown>[])
     : [];
 
-  if (list.length === 0) return [];
-
-  // Normalize and insert each opportunity
-  const rows = list.map((item) => ({
+  const claudeRows = claudeList.map((item) => ({
     organization_id: params.organizationId,
     funder_name: String(item.funder_name ?? item.funder ?? "Unknown Funder"),
-    name: String(item.name ?? item.title ?? item.opportunity_name ?? "Untitled Opportunity"),
+    name: String(item.name ?? item.title ?? item.opportunity_name ?? "Untitled"),
     program_area: item.program_area ? String(item.program_area) : null,
     funder_type: normalizeFunderType(item.funder_type),
     deadline: item.deadline ? String(item.deadline) : null,
     award_min: item.award_min != null ? Number(item.award_min) : null,
     award_max: item.award_max != null ? Number(item.award_max) : null,
-    geography: item.geography ? String(item.geography) : params.geography || null,
-    source_url: item.source_url ?? item.url ? String(item.source_url ?? item.url) : null,
-    eligibility_text: item.eligibility_text ? String(item.eligibility_text) : null,
-    notes: item.notes ? String(item.notes) : null,
+    geography: item.geography
+      ? String(item.geography)
+      : params.geography || null,
+    source_url: item.source_url ?? item.url
+      ? String(item.source_url ?? item.url)
+      : null,
+    eligibility_text: item.eligibility_text
+      ? String(item.eligibility_text)
+      : null,
+    notes: item.notes
+      ? `${String(item.notes)}${item.confidence ? ` [Confidence: ${item.confidence}]` : ""}`
+      : item.confidence
+      ? `[Confidence: ${item.confidence}]`
+      : null,
     status: "new",
-    verification_status: "unverified",
+    verification_status: "unverified" as const,
   }));
+
+  const allRows = [...federalRows, ...claudeRows];
+  if (allRows.length === 0) return [];
+
+  // ── Deduplicate by (funder_name + name) before inserting ─────────────────
+  const seen = new Set<string>();
+  const dedupedRows = allRows.filter((row) => {
+    const key = `${row.funder_name.toLowerCase()}||${row.name.toLowerCase()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
   const { data: saved, error } = await supabase
     .from("opportunities")
-    .insert(rows)
+    .insert(dedupedRows)
     .select();
 
   if (error) throw new Error(`Failed to save opportunities: ${error.message}`);
   const savedOpps = (saved ?? []) as ScoutedOpportunity[];
 
-  // Fire-and-forget: score + eligibility check each opportunity
+  // ── Fire-and-forget: score + eligibility check each opportunity ───────────
   for (const opp of savedOpps) {
     runScoringForOpportunity(opp.id, opp, params.organizationId).catch((err) =>
       console.error("[search] scoring error for", opp.id, err)
@@ -126,7 +188,7 @@ export async function searchGrantOpportunities(
 async function runScoringForOpportunity(
   opportunityId: string,
   opp: ScoutedOpportunity,
-  organizationId: string
+  _organizationId: string
 ): Promise<void> {
   const supabase = createAdminClient();
 
@@ -144,7 +206,6 @@ async function runScoringForOpportunity(
     notes: opp.notes,
   };
 
-  // Eligibility check
   try {
     const eligOutput = await callAgent({
       agentName: "eligibility_readiness_checker",
@@ -168,7 +229,6 @@ async function runScoringForOpportunity(
     console.error("[search] eligibility check failed for", opportunityId, e);
   }
 
-  // Priority scoring
   try {
     const scoreOutput = await callAgent({
       agentName: "grant_match_prioritizer",
@@ -186,7 +246,6 @@ async function runScoringForOpportunity(
       label: score.label ? String(score.label) : null,
       rationale: score.rationale ? String(score.rationale) : null,
     });
-    // Promote status to 'screening' once scored
     await supabase
       .from("opportunities")
       .update({ status: "screening" })
