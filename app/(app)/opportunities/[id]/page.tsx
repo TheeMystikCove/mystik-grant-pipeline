@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { createServerClient } from "@/lib/supabase/server";
 import { Topbar } from "@/components/layout/topbar";
 import { formatCurrency, formatDate, daysUntil } from "@/lib/utils";
@@ -35,7 +34,7 @@ export default async function OpportunityDetailPage({
         title={opp.name}
         subtitle={opp.funder_name}
         action={
-          opp.status === "pursuing" ? (
+          !["submitted", "awarded", "declined"].includes(opp.status) ? (
             <form action={startProposal}>
               <input type="hidden" name="opportunity_id" value={opp.id} />
               <button
