@@ -1,4 +1,4 @@
-import { signOut } from "@/app/(auth)/login/actions";
+import { UserMenu } from "./UserMenu";
 
 interface TopbarProps {
   title: string;
@@ -79,27 +79,7 @@ export function Topbar({ title, subtitle, action }: TopbarProps) {
       {/* Actions */}
       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
         {action}
-        <form action={signOut}>
-          <button
-            type="submit"
-            style={{
-              background: "transparent",
-              border: "1px solid var(--border)",
-              borderRadius: "2px",
-              padding: "0.375rem 0.875rem",
-              fontSize: "0.625rem",
-              color: "var(--text-muted)",
-              cursor: "pointer",
-              fontFamily: "Inter, system-ui, sans-serif",
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              fontWeight: 500,
-              transition: "border-color 0.15s, color 0.15s",
-            }}
-          >
-            Leave
-          </button>
-        </form>
+        <UserMenu />
       </div>
     </header>
   );
