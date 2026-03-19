@@ -107,7 +107,7 @@ export function OpportunitiesListClient({ opportunities }: Props) {
         <div style={{
           display: "flex", alignItems: "center", gap: "0.75rem",
           marginBottom: "0.75rem", padding: "0.625rem 1rem",
-          background: "var(--surface-accent)", border: "1px solid var(--border-accent)", borderRadius: "8px",
+          background: "var(--surface-accent)", border: "1px solid var(--border-accent)", borderRadius: "2px",
         }}>
           <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", flex: 1 }}>
             <strong style={{ color: "var(--accent)" }}>{selected.size}</strong>{" "}
@@ -126,7 +126,7 @@ export function OpportunitiesListClient({ opportunities }: Props) {
       )}
 
       {/* Table */}
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px", overflow: "hidden" }}>
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderTop: "1px solid var(--border-accent)", borderRadius: "2px", overflow: "hidden" }}>
 
         {/* Header */}
         <div style={{ display: "grid", gridTemplateColumns: COLS, padding: "0.625rem 1.25rem", borderBottom: "1px solid var(--border)", fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" as const, letterSpacing: "0.05em", alignItems: "center" }}>
@@ -231,7 +231,7 @@ export function OpportunitiesListClient({ opportunities }: Props) {
 
               {/* Status */}
               <span style={{
-                display: "inline-block", padding: "2px 8px", borderRadius: "4px",
+                display: "inline-block", padding: "2px 8px", borderRadius: "2px",
                 fontSize: "0.6875rem", fontWeight: 600,
                 background: `${color}22`, color,
                 textTransform: "capitalize" as const, whiteSpace: "nowrap" as const,
@@ -247,7 +247,7 @@ export function OpportunitiesListClient({ opportunities }: Props) {
                     type="submit"
                     style={{
                       background: "var(--accent)", color: "#efe8d6", border: "none",
-                      borderRadius: "5px", padding: "0.375rem 0.625rem",
+                      borderRadius: "2px", padding: "0.375rem 0.625rem",
                       fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.04em",
                       textTransform: "uppercase" as const, cursor: "pointer", whiteSpace: "nowrap" as const,
                     }}
@@ -269,16 +269,16 @@ export function OpportunitiesListClient({ opportunities }: Props) {
 const COLS = "40px 2fr 1.5fr 1fr 1fr 90px 90px 100px";
 
 const emptyCard: React.CSSProperties = {
-  background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "10px",
+  background: "var(--surface)", border: "1px solid var(--border)", borderTop: "1px solid var(--border-accent)", borderRadius: "2px",
   padding: "3rem", textAlign: "center", color: "var(--text-muted)",
 };
 
 const deleteBtnStyle: React.CSSProperties = {
-  background: "var(--danger)", color: "#fff", border: "none", borderRadius: "6px",
+  background: "var(--danger)", color: "#fff", border: "none", borderRadius: "2px",
   padding: "0.4375rem 0.875rem", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
 };
 
 const cancelBtnStyle: React.CSSProperties = {
   background: "transparent", color: "var(--text-secondary)", border: "1px solid var(--border)",
-  borderRadius: "6px", padding: "0.4375rem 0.875rem", fontSize: "0.8125rem", fontWeight: 500, cursor: "pointer",
+  borderRadius: "2px", padding: "0.4375rem 0.875rem", fontSize: "0.8125rem", fontWeight: 500, cursor: "pointer",
 };

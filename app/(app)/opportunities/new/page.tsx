@@ -94,13 +94,16 @@ export default function NewOpportunityPage() {
                 type="submit"
                 style={{
                   background: "var(--accent)",
-                  color: "#fff",
+                  color: "#efe8d6",
                   border: "none",
-                  borderRadius: "6px",
+                  borderRadius: "2px",
                   padding: "0.625rem 1.5rem",
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
+                  fontSize: "0.8125rem",
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
                   cursor: "pointer",
+                  boxShadow: "0 2px 10px #bb7b3d30",
                 }}
               >
                 Save Opportunity
@@ -131,7 +134,8 @@ function FormCard({ title, children }: { title: string; children: React.ReactNod
       style={{
         background: "var(--surface)",
         border: "1px solid var(--border)",
-        borderRadius: "10px",
+        borderTop: "1px solid var(--border-accent)",
+        borderRadius: "2px",
         overflow: "hidden",
       }}
     >
@@ -143,11 +147,11 @@ function FormCard({ title, children }: { title: string; children: React.ReactNod
       >
         <h2
           style={{
+            fontFamily: "Georgia, 'Times New Roman', serif",
             fontSize: "0.8125rem",
-            fontWeight: 600,
-            color: "var(--text-secondary)",
-            textTransform: "uppercase",
-            letterSpacing: "0.05em",
+            fontWeight: 700,
+            color: "var(--text-primary)",
+            letterSpacing: "0.01em",
           }}
         >
           {title}
@@ -178,7 +182,7 @@ function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
 const inputStyle: React.CSSProperties = {
   background: "var(--surface-raised)",
   border: "1px solid var(--border)",
-  borderRadius: "6px",
+  borderRadius: "2px",
   padding: "0.5rem 0.75rem",
   fontSize: "0.875rem",
   color: "var(--text-primary)",

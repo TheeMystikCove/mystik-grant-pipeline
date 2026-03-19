@@ -99,7 +99,7 @@ export function ScoreForm({ opportunityId, existing }: { opportunityId: string; 
 
         <button
           onClick={() => { setEditing(true); setFeedback(null); }}
-          style={{ alignSelf: "flex-start", marginTop: "0.25rem", background: "transparent", border: "1px solid var(--border)", borderRadius: "6px", padding: "0.375rem 0.75rem", fontSize: "0.75rem", color: "var(--text-muted)", cursor: "pointer" }}
+          style={{ alignSelf: "flex-start", marginTop: "0.25rem", background: "transparent", border: "1px solid var(--border)", borderRadius: "2px", padding: "0.375rem 0.75rem", fontSize: "0.75rem", color: "var(--text-muted)", cursor: "pointer" }}
         >
           Rescore
         </button>
@@ -112,7 +112,7 @@ export function ScoreForm({ opportunityId, existing }: { opportunityId: string; 
       <input type="hidden" name="opportunity_id" value={opportunityId} />
 
       {/* Live score preview */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.75rem 1rem", background: "var(--surface-deep)", borderRadius: "8px", border: "1px solid var(--border)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", padding: "0.75rem 1rem", background: "var(--surface-deep)", borderRadius: "2px", border: "1px solid var(--border)" }}>
         <span style={{ fontSize: "1.75rem", fontWeight: 700, color: scoreColor(liveScore), lineHeight: 1 }}>{liveScore}</span>
         <span style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>/ 100</span>
         <span style={{ fontSize: "0.75rem", fontWeight: 700, color: scoreColor(liveScore), marginLeft: "0.25rem" }}>{scoreLabel(liveScore)}</span>
@@ -157,7 +157,7 @@ export function ScoreForm({ opportunityId, existing }: { opportunityId: string; 
           rows={2}
           placeholder="Brief notes on why you scored it this way…"
           defaultValue={existing?.rationale ?? ""}
-          style={{ background: "var(--surface-deep)", border: "1px solid var(--border)", borderRadius: "6px", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", color: "var(--text-primary)", resize: "vertical", width: "100%", boxSizing: "border-box" }}
+          style={{ background: "var(--surface-deep)", border: "1px solid var(--border)", borderRadius: "2px", padding: "0.5rem 0.75rem", fontSize: "0.8125rem", color: "var(--text-primary)", resize: "vertical", width: "100%", boxSizing: "border-box" }}
         />
       </div>
 
@@ -169,7 +169,7 @@ export function ScoreForm({ opportunityId, existing }: { opportunityId: string; 
         <button
           type="submit"
           disabled={isPending}
-          style={{ padding: "0.5rem 1.25rem", background: "var(--accent)", color: "#efe8d6", border: "none", borderRadius: "6px", fontSize: "0.8125rem", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", cursor: isPending ? "wait" : "pointer", opacity: isPending ? 0.7 : 1 }}
+          style={{ padding: "0.5rem 1.25rem", background: "var(--accent)", color: "#efe8d6", border: "none", borderRadius: "2px", fontSize: "0.8125rem", fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase", cursor: isPending ? "wait" : "pointer", opacity: isPending ? 0.7 : 1 }}
         >
           {isPending ? "Saving…" : "Save Score"}
         </button>

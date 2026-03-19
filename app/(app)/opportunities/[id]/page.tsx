@@ -60,7 +60,7 @@ export default async function OpportunityDetailPage({
                     padding: "0.4375rem 0.75rem",
                     background: "var(--surface)",
                     border: "1px solid var(--border)",
-                    borderRadius: "6px",
+                    borderRadius: "2px",
                     fontSize: "0.75rem",
                     fontWeight: 600,
                     color: "var(--text-secondary)",
@@ -78,9 +78,9 @@ export default async function OpportunityDetailPage({
                   type="submit"
                   style={{
                     background: "var(--accent)",
-                    color: "#fff",
+                    color: "#efe8d6",
                     border: "none",
-                    borderRadius: "6px",
+                    borderRadius: "2px",
                     padding: "0.4375rem 0.875rem",
                     fontSize: "0.8125rem",
                     fontWeight: 600,
@@ -192,7 +192,8 @@ export default async function OpportunityDetailPage({
 const cardStyle: React.CSSProperties = {
   background: "var(--surface)",
   border: "1px solid var(--border)",
-  borderRadius: "10px",
+  borderTop: "1px solid var(--border-accent)",
+  borderRadius: "2px",
   padding: "1.25rem",
 };
 
@@ -206,8 +207,9 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
     <h2
       style={{
+        fontFamily: "Georgia, 'Times New Roman', serif",
         fontSize: "0.875rem",
-        fontWeight: 600,
+        fontWeight: 700,
         color: "var(--text-primary)",
         marginBottom: "1rem",
         paddingBottom: "0.625rem",

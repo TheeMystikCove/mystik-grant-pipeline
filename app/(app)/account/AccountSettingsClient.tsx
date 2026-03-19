@@ -135,7 +135,7 @@ export function AccountSettingsClient({
                 background: active ? "var(--surface-accent)" : "transparent",
                 border: "none",
                 borderLeft: `2px solid ${active ? "var(--accent)" : "transparent"}`,
-                borderRadius: "0 4px 4px 0",
+                borderRadius: "0 2px 2px 0",
                 cursor: "pointer", textAlign: "left",
                 fontSize: "0.8125rem",
                 fontWeight: active ? 600 : 400,
@@ -250,7 +250,7 @@ export function AccountSettingsClient({
                 padding: "0.75rem 1rem",
                 background: "rgba(180,60,60,0.08)",
                 border: "1px solid var(--danger)",
-                borderRadius: "6px",
+                borderRadius: "2px",
                 fontSize: "0.8125rem",
                 color: "var(--danger)",
               }}>
@@ -262,7 +262,7 @@ export function AccountSettingsClient({
                 padding: "0.75rem 1rem",
                 background: "rgba(60,160,80,0.08)",
                 border: "1px solid var(--success)",
-                borderRadius: "6px",
+                borderRadius: "2px",
                 fontSize: "0.8125rem",
                 color: "var(--success)",
               }}>
@@ -374,7 +374,7 @@ function GoogleCalendarTab({
           <span style={{
             fontSize: "0.6875rem", fontWeight: 700, color: "var(--success)",
             background: "rgba(60,160,80,0.1)", border: "1px solid var(--success)",
-            borderRadius: "4px", padding: "0.1875rem 0.5rem", letterSpacing: "0.04em",
+            borderRadius: "2px", padding: "0.1875rem 0.5rem", letterSpacing: "0.04em",
           }}>
             ✓ Connected
           </span>
@@ -394,7 +394,7 @@ function GoogleCalendarTab({
                 display: "inline-flex", alignItems: "center", gap: "0.5rem",
                 padding: "0.5625rem 1.25rem",
                 background: "var(--accent)", color: "#efe8d6",
-                border: "none", borderRadius: "6px",
+                border: "none", borderRadius: "2px",
                 fontSize: "0.8125rem", fontWeight: 700,
                 letterSpacing: "0.04em", textTransform: "uppercase",
                 textDecoration: "none", cursor: "pointer",
@@ -467,7 +467,7 @@ function GoogleCalendarTab({
                 style={{
                   padding: "0.5rem 1rem",
                   background: "var(--surface-raised)", color: "var(--accent)",
-                  border: "1px solid var(--border-accent)", borderRadius: "6px",
+                  border: "1px solid var(--border-accent)", borderRadius: "2px",
                   fontSize: "0.8125rem", fontWeight: 600,
                   cursor: "pointer",
                 }}
@@ -484,7 +484,7 @@ function GoogleCalendarTab({
                 marginLeft: "auto",
                 padding: "0.5rem 1rem",
                 background: "transparent", color: "var(--danger)",
-                border: "1px solid var(--danger)", borderRadius: "6px",
+                border: "1px solid var(--danger)", borderRadius: "2px",
                 fontSize: "0.75rem", fontWeight: 600,
                 cursor: isPending ? "wait" : "pointer",
                 opacity: isPending ? 0.6 : 1,
@@ -570,7 +570,7 @@ function TeamTab({
                 letterSpacing: "0.08em",
                 background: member.role === "founder_admin" ? "var(--surface-accent)" : "var(--surface-raised)",
                 border: `1px solid ${member.role === "founder_admin" ? "var(--border-accent)" : "var(--border)"}`,
-                borderRadius: "4px",
+                borderRadius: "2px",
                 padding: "0.1875rem 0.5rem",
                 flexShrink: 0,
               }}>
@@ -613,7 +613,7 @@ function TeamTab({
                 style={{
                   padding: "0.5rem 1.25rem",
                   background: "var(--accent)", color: "#efe8d6",
-                  border: "none", borderRadius: "6px",
+                  border: "none", borderRadius: "2px",
                   fontSize: "0.8125rem", fontWeight: 700,
                   letterSpacing: "0.04em", textTransform: "uppercase",
                   cursor: isPending ? "wait" : "pointer",
@@ -682,7 +682,7 @@ function FormFooter({ isPending, feedback, label = "Save Changes" }: {
         disabled={isPending}
         style={{
           background: feedback?.success ? "var(--success)" : "var(--accent)",
-          color: "#efe8d6", border: "none", borderRadius: "6px",
+          color: "#efe8d6", border: "none", borderRadius: "2px",
           padding: "0.5625rem 1.5rem", fontSize: "0.8125rem", fontWeight: 700,
           letterSpacing: "0.04em", textTransform: "uppercase",
           cursor: isPending ? "wait" : "pointer",
@@ -704,13 +704,14 @@ function FormFooter({ isPending, feedback, label = "Save Changes" }: {
 const cardStyle: React.CSSProperties = {
   background: "var(--surface)",
   border: "1px solid var(--border)",
-  borderRadius: "10px",
+  borderTop: "1px solid var(--border-accent)",
+  borderRadius: "2px",
 };
 
 const inputStyle: React.CSSProperties = {
   background: "var(--surface-raised)",
   border: "1px solid var(--border)",
-  borderRadius: "6px",
+  borderRadius: "2px",
   padding: "0.5rem 0.75rem",
   fontSize: "0.875rem",
   color: "var(--text-primary)",

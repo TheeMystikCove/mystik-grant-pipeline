@@ -88,7 +88,7 @@ export function RunAgentButton({ proposalProjectId, agentName, pipelineSequence,
           padding: "0.875rem 1rem",
           background: "var(--surface-accent)",
           border: "1px solid var(--border-accent)",
-          borderRadius: "6px",
+          borderRadius: "2px",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "0.625rem" }}>
@@ -142,7 +142,7 @@ export function RunAgentButton({ proposalProjectId, agentName, pipelineSequence,
           style={{
             background: "var(--oxblood-muted)",
             border: "1px solid var(--oxblood)",
-            borderRadius: "6px",
+            borderRadius: "2px",
             padding: "0.625rem 0.875rem",
             fontSize: "0.75rem",
             color: "#e8b4b2",
@@ -184,7 +184,8 @@ export function RunAgentButton({ proposalProjectId, agentName, pipelineSequence,
             style={{
               background: "var(--surface)",
               border: "1px solid var(--border-accent)",
-              borderRadius: "12px",
+              borderTop: "2px solid var(--accent)",
+              borderRadius: "2px",
               padding: "1.75rem",
               maxWidth: "420px",
               width: "100%",
@@ -203,7 +204,7 @@ export function RunAgentButton({ proposalProjectId, agentName, pipelineSequence,
             </p>
 
             {missingFields.length > 0 && (
-              <div style={{ background: "var(--surface-accent)", border: "1px solid var(--border)", borderRadius: "6px", padding: "0.75rem 1rem", marginBottom: "1.25rem" }}>
+              <div style={{ background: "var(--surface-accent)", border: "1px solid var(--border)", borderRadius: "2px", padding: "0.75rem 1rem", marginBottom: "1.25rem" }}>
                 <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.4rem" }}>
                   Missing fields
                 </p>
@@ -223,7 +224,7 @@ export function RunAgentButton({ proposalProjectId, agentName, pipelineSequence,
                 style={{
                   flex: 1, display: "block", textAlign: "center",
                   background: "var(--accent)", color: "#efe8d6",
-                  borderRadius: "6px", padding: "0.5625rem",
+                  borderRadius: "2px", padding: "0.5625rem",
                   fontSize: "0.8125rem", fontWeight: 700,
                   letterSpacing: "0.04em", textTransform: "uppercase",
                   textDecoration: "none",
@@ -235,7 +236,7 @@ export function RunAgentButton({ proposalProjectId, agentName, pipelineSequence,
                 onClick={() => setShowIntakeModal(false)}
                 style={{
                   background: "transparent", color: "var(--text-muted)",
-                  border: "1px solid var(--border)", borderRadius: "6px",
+                  border: "1px solid var(--border)", borderRadius: "2px",
                   padding: "0.5625rem 1rem", fontSize: "0.8125rem",
                   cursor: "pointer",
                 }}
@@ -285,7 +286,7 @@ const btnStyle: React.CSSProperties = {
   background: "var(--accent)",
   color: "#efe8d6",
   border: "none",
-  borderRadius: "6px",
+  borderRadius: "2px",
   padding: "0.5625rem",
   fontSize: "0.8125rem",
   fontWeight: 700,

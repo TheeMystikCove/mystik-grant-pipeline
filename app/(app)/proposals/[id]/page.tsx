@@ -163,7 +163,7 @@ export default async function ProposalWorkspacePage({
                 padding: "0.5625rem 0.75rem",
                 background: "var(--surface-accent)",
                 border: "1px solid var(--border-accent)",
-                borderRadius: "6px",
+                borderRadius: "2px",
                 textDecoration: "none",
                 gap: "0.5rem",
               }}
@@ -244,7 +244,7 @@ export default async function ProposalWorkspacePage({
                   display: "block",
                   textAlign: "center",
                   padding: "0.4375rem",
-                  borderRadius: "6px",
+                  borderRadius: "2px",
                   border: "1px solid var(--border)",
                   fontSize: "0.75rem",
                   color: "var(--text-secondary)",
@@ -266,7 +266,7 @@ export default async function ProposalWorkspacePage({
                   display: "block",
                   textAlign: "center",
                   padding: "0.5rem",
-                  borderRadius: "6px",
+                  borderRadius: "2px",
                   border: "1px solid var(--success)",
                   fontSize: "0.75rem",
                   fontWeight: 600,
@@ -289,14 +289,16 @@ export default async function ProposalWorkspacePage({
               style={{
                 background: "var(--surface)",
                 border: "1px solid var(--border)",
-                borderRadius: "10px",
+                borderTop: "1px solid var(--border-accent)",
+                borderRadius: "2px",
                 padding: "1.25rem",
               }}
             >
               <h2
                 style={{
+                  fontFamily: "Georgia, 'Times New Roman', serif",
                   fontSize: "0.875rem",
-                  fontWeight: 600,
+                  fontWeight: 700,
                   color: "var(--text-primary)",
                   marginBottom: "0.75rem",
                 }}
@@ -313,7 +315,7 @@ export default async function ProposalWorkspacePage({
                     alignItems: "center",
                     gap: "0.375rem",
                     padding: "4px 10px",
-                    borderRadius: "5px",
+                    borderRadius: "2px",
                     fontSize: "0.75rem",
                     fontWeight: 700,
                     background:
@@ -342,7 +344,8 @@ export default async function ProposalWorkspacePage({
               style={{
                 background: "var(--surface)",
                 border: "1px solid var(--warning)",
-                borderRadius: "10px",
+                borderTop: "1px solid var(--warning)",
+                borderRadius: "2px",
                 padding: "1.25rem",
                 display: "flex",
                 justifyContent: "space-between",
@@ -371,12 +374,14 @@ export default async function ProposalWorkspacePage({
                   type="submit"
                   style={{
                     background: "var(--success)",
-                    color: "#fff",
+                    color: "#efe8d6",
                     border: "none",
-                    borderRadius: "6px",
+                    borderRadius: "2px",
                     padding: "0.5rem 1.25rem",
                     fontSize: "0.8125rem",
-                    fontWeight: 600,
+                    fontWeight: 700,
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
                     cursor: "pointer",
                     flexShrink: 0,
                   }}
@@ -392,8 +397,9 @@ export default async function ProposalWorkspacePage({
             <section>
               <h2
                 style={{
+                  fontFamily: "Georgia, 'Times New Roman', serif",
                   fontSize: "0.875rem",
-                  fontWeight: 600,
+                  fontWeight: 700,
                   color: "var(--text-primary)",
                   marginBottom: "0.875rem",
                 }}
@@ -413,7 +419,8 @@ export default async function ProposalWorkspacePage({
               style={{
                 background: "var(--surface)",
                 border: "1px solid var(--border)",
-                borderRadius: "10px",
+                borderTop: "1px solid var(--border-accent)",
+                borderRadius: "2px",
                 padding: "3rem",
                 textAlign: "center",
                 color: "var(--text-muted)",
@@ -446,7 +453,8 @@ function SectionCard({
       style={{
         background: "var(--surface)",
         border: "1px solid var(--border)",
-        borderRadius: "10px",
+        borderTop: "1px solid var(--border-accent)",
+        borderRadius: "2px",
         overflow: "hidden",
       }}
     >
@@ -462,8 +470,9 @@ function SectionCard({
         <div>
           <h3
             style={{
+              fontFamily: "Georgia, 'Times New Roman', serif",
               fontSize: "0.8125rem",
-              fontWeight: 600,
+              fontWeight: 700,
               color: "var(--text-primary)",
               textTransform: "capitalize",
             }}

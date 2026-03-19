@@ -36,7 +36,8 @@ export default async function ProposalsPage() {
             style={{
               background: "var(--surface)",
               border: "1px solid var(--border)",
-              borderRadius: "10px",
+              borderTop: "1px solid var(--border-accent)",
+              borderRadius: "2px",
               padding: "3rem",
               textAlign: "center",
               color: "var(--text-muted)",
@@ -62,7 +63,8 @@ export default async function ProposalsPage() {
                   style={{
                     background: "var(--surface)",
                     border: "1px solid var(--border)",
-                    borderRadius: "10px",
+                    borderTop: "1px solid var(--border-accent)",
+                    borderRadius: "2px",
                     padding: "1rem 1.25rem",
                     display: "flex",
                     justifyContent: "space-between",
@@ -75,6 +77,7 @@ export default async function ProposalsPage() {
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <p
                       style={{
+                        fontFamily: "Georgia, 'Times New Roman', serif",
                         fontSize: "0.875rem",
                         fontWeight: 600,
                         color: "var(--text-primary)",
@@ -112,7 +115,7 @@ export default async function ProposalsPage() {
                     style={{
                       display: "inline-block",
                       padding: "3px 10px",
-                      borderRadius: "5px",
+                      borderRadius: "2px",
                       fontSize: "0.6875rem",
                       fontWeight: 700,
                       background: `${color}22`,
