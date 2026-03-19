@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { AutoSignOut } from "@/components/AutoSignOut";
+import { NexisPanel } from "@/components/nexis/NexisPanel";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -9,6 +10,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {children}
       </div>
+      <NexisPanel />
     </div>
   );
 }
