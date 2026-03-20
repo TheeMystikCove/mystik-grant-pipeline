@@ -6,6 +6,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { scoreOpportunityAI } from "@/lib/nexis/scoring/score-opportunity"
 
 // ── Tool definitions ──────────────────────────────────────────────────────────
 
@@ -82,6 +83,18 @@ export const NEXIS_DB_TOOLS = [
     },
   },
   {
+    name: "score_opportunity",
+    description:
+      "AI-score a grant opportunity using the 40/25/15/10/10 priority rubric. Call this automatically after adding a new opportunity, or when the user asks to score or evaluate one.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        opportunity_id: { type: "string", description: "UUID of the opportunity to score" },
+      },
+      required: ["opportunity_id"],
+    },
+  },
+  {
     name: "add_proposal_project",
     description:
       "Create a new proposal project in the pipeline for a tracked opportunity. Use when the user wants to formally start writing a proposal.",
@@ -100,9 +113,10 @@ export const NEXIS_DB_TOOLS = [
 // ── Signal text shown to user while each tool executes ───────────────────────
 
 export const DB_TOOL_SIGNALS: Record<string, string> = {
-  add_opportunity:     "\n\n*◎ Adding to your grant tracker…*\n\n",
-  update_opportunity:  "\n\n*◎ Updating the record…*\n\n",
+  add_opportunity:      "\n\n*◎ Adding to your grant tracker…*\n\n",
+  update_opportunity:   "\n\n*◎ Updating the record…*\n\n",
   search_opportunities: "\n\n*◎ Searching your pipeline…*\n\n",
+  score_opportunity:    "\n\n*◎ Scoring this opportunity…*\n\n",
   add_proposal_project: "\n\n*◎ Creating proposal project…*\n\n",
 }
 
@@ -135,7 +149,17 @@ export async function executeNexisTool(
           .select("id, name, funder_name, status")
           .single()
         if (error) return { success: false, error: error.message }
-        return { success: true, data }
+        // Auto-score the new opportunity immediately
+        const scoreResult = await scoreOpportunityAI(data.id, supabase)
+        return {
+          success: true,
+          data: { ...data, score: scoreResult.success ? scoreResult.data : null },
+        }
+      }
+
+      case "score_opportunity": {
+        const result = await scoreOpportunityAI(input.opportunity_id as string, supabase)
+        return result
       }
 
       case "update_opportunity": {

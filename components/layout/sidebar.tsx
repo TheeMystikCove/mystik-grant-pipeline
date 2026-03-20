@@ -3,10 +3,11 @@ import { createServerClient } from "@/lib/supabase/server";
 import { SidebarUserMenu } from "./SidebarUserMenu";
 
 const NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: "⊞" },
-  { href: "/opportunities", label: "Opportunities", icon: "◎" },
-  { href: "/proposals", label: "Proposals", icon: "◈" },
-  { href: "/calendar", label: "Calendar", icon: "◷" },
+  { href: "/dashboard",    label: "Dashboard",     icon: "⊞" },
+  { href: "/pipeline",     label: "Pipeline",      icon: "◈" },
+  { href: "/opportunities",label: "Opportunities", icon: "◎" },
+  { href: "/proposals",    label: "Proposals",     icon: "◇" },
+  { href: "/calendar",     label: "Calendar",      icon: "◷" },
 ];
 
 const OS_NAV = [
