@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"; // always fetch fresh data
+
 import Link from "next/link";
 import { createServerClient } from "@/lib/supabase/server";
 import { Topbar } from "@/components/layout/topbar";
