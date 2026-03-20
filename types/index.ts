@@ -360,6 +360,42 @@ export interface UploadedFile {
   created_at: string;
 }
 
+export type ProjectStatus = "draft" | "active" | "archived";
+export type ArchitectStage = "intro" | "problem" | "population" | "outcomes" | "budget" | "timeline" | "complete";
+
+export interface Project {
+  id: string;
+  organization_id: string;
+  title: string;
+  description: string | null;
+  status: ProjectStatus;
+  tags: string[];
+  program_area: string | null;
+  target_population: string | null;
+  estimated_budget: number | null;
+  timeline: string | null;
+  problem_statement: string | null;
+  theory_of_change: string | null;
+  target_outcomes: string | null;
+  budget_framework: string | null;
+  source_document_url: string | null;
+  source_document_text: string | null;
+  initiative_brief: Record<string, unknown> | null;
+  conversation_history: Array<{ role: "user" | "assistant"; content: string; stage: string }>;
+  architect_stage: ArchitectStage;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProjectOpportunity {
+  id: string;
+  project_id: string;
+  opportunity_id: string;
+  match_score: number | null;
+  match_rationale: string | null;
+  matched_at: string;
+}
+
 export interface NotionSyncJob {
   id: string;
   organization_id: string | null;

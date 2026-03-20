@@ -15,6 +15,16 @@ async function getOpportunity(id: string) {
   return data;
 }
 
+async function getFunderProfile(funderName: string) {
+  const supabase = await createServerClient();
+  const { data } = await supabase
+    .from("funder_profiles")
+    .select("*")
+    .eq("funder_name", funderName)
+    .single();
+  return data;
+}
+
 export default async function OpportunityDetailPage({
   params,
 }: {
@@ -28,6 +38,7 @@ export default async function OpportunityDetailPage({
   const days = daysUntil(opp.deadline);
   const score = opp.opportunity_scores;
   const readiness = opp.readiness_checks;
+  const funderProfile = await getFunderProfile(opp.funder_name);
 
   return (
     <>
@@ -172,6 +183,55 @@ export default async function OpportunityDetailPage({
             </dl>
           </section>
         )}
+
+        {/* Funder Profile */}
+        <section style={cardStyle}>
+          <SectionHeader>Funder Profile</SectionHeader>
+          {funderProfile ? (
+            <dl style={dlStyle}>
+              {funderProfile.ein && <Field label="EIN">{funderProfile.ein}</Field>}
+              {(funderProfile.address || funderProfile.city || funderProfile.state) && (
+                <Field label="Address">
+                  {[funderProfile.address, funderProfile.city, funderProfile.state]
+                    .filter(Boolean)
+                    .join(", ")}
+                </Field>
+              )}
+              {funderProfile.phone && <Field label="Phone">{funderProfile.phone}</Field>}
+              {funderProfile.website && (
+                <Field label="Website">
+                  <a
+                    href={funderProfile.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "var(--accent)", textDecoration: "none" }}
+                  >
+                    {funderProfile.website.replace(/^https?:\/\//, "")} ↗
+                  </a>
+                </Field>
+              )}
+              {funderProfile.total_giving != null && (
+                <Field label="Total Giving (last filing)">
+                  {formatCurrency(funderProfile.total_giving)}
+                </Field>
+              )}
+              {funderProfile.median_grant_amount != null && (
+                <Field label="Median Grant Amount">
+                  {formatCurrency(funderProfile.median_grant_amount)}
+                </Field>
+              )}
+              {funderProfile.giving_rate_new_grantees != null && (
+                <Field label="Giving Rate to New Grantees">
+                  {(funderProfile.giving_rate_new_grantees * 100).toFixed(0)}%
+                </Field>
+              )}
+            </dl>
+          ) : (
+            <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", fontStyle: "italic" }}>
+              Enriching funder data from IRS 990 records… check back shortly.
+            </p>
+          )}
+        </section>
 
         {/* Notes */}
         {opp.notes && (

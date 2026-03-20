@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { startProposal } from "../[id]/actions";
 
 interface SearchResult {
@@ -18,7 +18,10 @@ interface SearchResult {
   notes: string | null;
   status: string;
   verification_status: string;
+  _score?: number; // populated after fire-and-forget scoring
 }
+
+type SortBy = "new" | "deadline" | "amount" | "score";
 
 interface Props {
   organizationId: string;
@@ -59,6 +62,38 @@ export function OpportunityFinderClient({ organizationId }: Props) {
   const [results, setResults] = useState<SearchResult[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchedFor, setSearchedFor] = useState<string>("");
+  const [sortBy, setSortBy] = useState<SortBy>("new");
+  const [scoresLoading, setScoresLoading] = useState(false);
+  const [scoresReady, setScoresReady] = useState(false);
+
+  // Fetch priority scores for returned opportunity IDs (fire-and-forget after search)
+  const fetchScores = useCallback(async (opps: SearchResult[]) => {
+    if (opps.length === 0) return;
+    setScoresLoading(true);
+    const ids = opps.map((o) => o.id).join(",");
+
+    // Poll up to 4 times with 8s intervals — scoring is fire-and-forget on the server
+    for (let attempt = 0; attempt < 4; attempt++) {
+      await new Promise((r) => setTimeout(r, attempt === 0 ? 8000 : 10000));
+      try {
+        const res = await fetch(`/api/opportunities/scores?ids=${ids}`);
+        if (!res.ok) continue;
+        const data = await res.json() as Record<string, number>;
+        const scored = Object.keys(data).filter((id) => data[id] > 0);
+        if (scored.length === 0) continue;
+
+        setResults((prev) =>
+          prev
+            ? prev.map((o) => data[o.id] != null ? { ...o, _score: data[o.id] } : o)
+            : prev
+        );
+        setScoresReady(true);
+        setScoresLoading(false);
+        return;
+      } catch { /* keep polling */ }
+    }
+    setScoresLoading(false);
+  }, []);
 
   async function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -69,6 +104,8 @@ export function OpportunityFinderClient({ organizationId }: Props) {
     setLoading(true);
     setError(null);
     setResults(null);
+    setScoresReady(false);
+    setSortBy("new");
     setSearchedFor([keywords, programArea, geography].filter(Boolean).join(" · "));
 
     try {
@@ -79,13 +116,37 @@ export function OpportunityFinderClient({ organizationId }: Props) {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Search failed");
-      setResults(json.opportunities ?? []);
+      const opps: SearchResult[] = json.opportunities ?? [];
+      setResults(opps);
+      // Start background score polling
+      fetchScores(opps);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
   }
+
+  // Sorted results based on active sort pill
+  const sortedResults = useMemo(() => {
+    if (!results) return [];
+    const arr = [...results];
+    if (sortBy === "deadline") {
+      return arr.sort((a, b) => {
+        if (!a.deadline && !b.deadline) return 0;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+      });
+    }
+    if (sortBy === "amount") {
+      return arr.sort((a, b) => (b.award_max ?? b.award_min ?? 0) - (a.award_max ?? a.award_min ?? 0));
+    }
+    if (sortBy === "score") {
+      return arr.sort((a, b) => (b._score ?? 0) - (a._score ?? 0));
+    }
+    return arr; // "new" — insertion order
+  }, [results, sortBy]);
 
   const federalCount = results?.filter((r) => r.verification_status === "source_verified").length ?? 0;
   const webCount = results?.filter((r) => r.verification_status === "web_verified").length ?? 0;
@@ -216,7 +277,8 @@ export function OpportunityFinderClient({ organizationId }: Props) {
       {/* Results */}
       {results !== null && !loading && (
         <section>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.875rem", flexWrap: "wrap" as const, gap: "0.5rem" }}>
+          {/* Results header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem", flexWrap: "wrap" as const, gap: "0.5rem" }}>
             <div>
               <h2 style={{ fontFamily: "Georgia, serif", fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.25rem" }}>
                 {results.length === 0 ? "No results found" : `${results.length} opportunities found`}
@@ -227,13 +289,13 @@ export function OpportunityFinderClient({ organizationId }: Props) {
                     <><span style={{ color: "var(--text-secondary)" }}>{searchedFor}</span> · </>
                   )}
                   {federalCount > 0 && (
-                    <><span style={{ color: "var(--info)" }}>{federalCount} federal (Grants.gov live)</span>{webCount > 0 || foundationCount > 0 ? " · " : ""}</>
+                    <><span style={{ color: "var(--info)" }}>{federalCount} federal</span>{webCount > 0 || foundationCount > 0 ? " · " : ""}</>
                   )}
                   {webCount > 0 && (
-                    <><span style={{ color: "var(--success)" }}>{webCount} web-sourced (community/state/local)</span>{foundationCount > 0 ? " · " : ""}</>
+                    <><span style={{ color: "var(--success)" }}>{webCount} web-sourced</span>{foundationCount > 0 ? " · " : ""}</>
                   )}
                   {foundationCount > 0 && (
-                    <span style={{ color: "var(--warning)" }}>{foundationCount} AI-suggested (verify before applying)</span>
+                    <span style={{ color: "var(--warning)" }}>{foundationCount} AI-suggested</span>
                   )}
                 </p>
               )}
@@ -245,6 +307,50 @@ export function OpportunityFinderClient({ organizationId }: Props) {
             )}
           </div>
 
+          {/* Sort pills */}
+          {results.length > 0 && (
+            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem", flexWrap: "wrap" as const }}>
+              <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", alignSelf: "center", marginRight: "0.25rem", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                Sort:
+              </span>
+              {(["new", "deadline", "amount", "score"] as SortBy[]).map((s) => {
+                const isActive = sortBy === s;
+                const isScore = s === "score";
+                const disabled = isScore && !scoresReady;
+                const label =
+                  s === "new" ? "New" :
+                  s === "deadline" ? "Deadline ↑" :
+                  s === "amount" ? "Amount ↓" :
+                  scoresLoading ? "Best Match…" : "Best Match ★";
+
+                return (
+                  <button
+                    key={s}
+                    onClick={() => !disabled && setSortBy(s)}
+                    disabled={disabled}
+                    style={{
+                      background: isActive ? "var(--accent)" : "var(--surface-raised)",
+                      color: isActive ? "#efe8d6" : disabled ? "var(--text-muted)" : "var(--text-secondary)",
+                      border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
+                      borderRadius: "20px",
+                      padding: "0.3rem 0.75rem",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      cursor: disabled ? "not-allowed" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.35rem",
+                      opacity: disabled ? 0.5 : 1,
+                    }}
+                  >
+                    {isScore && scoresLoading && <MiniSpinner />}
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {results.length === 0 ? (
             <div style={{ ...cardStyle, padding: "2.5rem", textAlign: "center" as const, color: "var(--text-muted)", fontSize: "0.875rem" }}>
               <p style={{ marginBottom: "0.5rem", color: "var(--text-secondary)" }}>No matches found for these search terms.</p>
@@ -252,7 +358,7 @@ export function OpportunityFinderClient({ organizationId }: Props) {
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-              {results.map((opp) => (
+              {sortedResults.map((opp) => (
                 <ResultCard key={opp.id} opp={opp} />
               ))}
             </div>
@@ -266,7 +372,6 @@ export function OpportunityFinderClient({ organizationId }: Props) {
 // ─── Result Card ──────────────────────────────────────────────────────────────
 
 function ResultCard({ opp }: { opp: SearchResult }) {
-
   return (
     <div style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -275,6 +380,11 @@ function ResultCard({ opp }: { opp: SearchResult }) {
             {opp.name}
           </p>
           <SourceBadge verificationStatus={opp.verification_status} funderType={opp.funder_type} />
+          {opp._score != null && opp._score > 0 && (
+            <span style={{ fontSize: "0.625rem", fontWeight: 700, color: "var(--accent)", background: "var(--surface-raised)", border: "1px solid var(--border-accent)", borderRadius: "3px", padding: "2px 6px", letterSpacing: "0.04em" }}>
+              ★ {opp._score}
+            </span>
+          )}
         </div>
 
         <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>
@@ -376,6 +486,15 @@ function Spinner() {
   return (
     <>
       <div style={{ width: "24px", height: "24px", border: "2px solid var(--border-accent)", borderTopColor: "var(--accent)", borderRadius: "50%", animation: "spin 0.7s linear infinite", margin: "0 auto" }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </>
+  );
+}
+
+function MiniSpinner() {
+  return (
+    <>
+      <div style={{ width: "10px", height: "10px", border: "1.5px solid var(--border)", borderTopColor: "var(--text-muted)", borderRadius: "50%", animation: "spin 0.7s linear infinite", flexShrink: 0 }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </>
   );

@@ -2,6 +2,7 @@ import { callAgent } from "@/lib/claude/call-agent";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { searchGrantsGov } from "./grants-gov";
 import { webSearchScout } from "./web-search-scout";
+import { enrichFunderProfile } from "./funder-enrichment";
 import type { FunderType } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -150,7 +151,7 @@ export async function searchGrantOpportunities(
     name: String(item.name ?? item.title ?? item.opportunity_name ?? "Untitled"),
     program_area: item.program_area ? String(item.program_area) : null,
     funder_type: normalizeFunderType(item.funder_type),
-    deadline: item.deadline ? String(item.deadline) : null,
+    deadline: sanitizeDeadline(item.deadline),
     award_min: item.award_min != null ? Number(item.award_min) : null,
     award_max: item.award_max != null ? Number(item.award_max) : null,
     geography: item.geography
@@ -209,10 +210,13 @@ export async function searchGrantOpportunities(
   if (error) throw new Error(`Failed to save opportunities: ${error.message}`);
   const savedOpps = (saved ?? []) as ScoutedOpportunity[];
 
-  // ── Fire-and-forget: score + eligibility check each opportunity ───────────
+  // ── Fire-and-forget: score + eligibility check + funder enrichment ───────
   for (const opp of savedOpps) {
     runScoringForOpportunity(opp.id, opp, params.organizationId).catch((err) =>
       console.error("[search] scoring error for", opp.id, err)
+    );
+    enrichFunderProfile(opp.funder_name).catch((err) =>
+      console.error("[search] enrichment error for", opp.funder_name, err)
     );
   }
 
@@ -292,6 +296,23 @@ async function runScoringForOpportunity(
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Returns ISO date string (YYYY-MM-DD) if parseable, otherwise null.
+ * Prevents descriptive strings like "Annual cycle (TBD)" from breaking
+ * Supabase timestamp columns.
+ */
+function sanitizeDeadline(raw: unknown): string | null {
+  if (!raw) return null;
+  const str = String(raw).trim();
+  const isoMatch = str.match(/^\d{4}-\d{2}-\d{2}$/);
+  const slashMatch = str.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/);
+  const longMatch = str.match(/^[A-Za-z]+ \d{1,2},?\s*\d{4}$/);
+  if (!isoMatch && !slashMatch && !longMatch) return null;
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString().split("T")[0];
+}
 
 function normalizeFunderType(raw: unknown): FunderType | null {
   const valid: FunderType[] = [

@@ -31,7 +31,7 @@ async function getPipelineData() {
     .select("id, name, funder_name, funder_type, program_area, status, deadline, award_min, award_max, notes, opportunity_scores(total_score, label, strategic_fit_score, eligibility_score)")
     .not("status", "in", '("archived","rejected")')
     .order("deadline", { ascending: true, nullsFirst: false })
-  return (data ?? []) as OppWithScore[]
+  return (data ?? []) as unknown as OppWithScore[]
 }
 
 // ── Stage config ──────────────────────────────────────────────────────────────
