@@ -6,6 +6,7 @@ import { routeRequest } from "../router/provider-router"
 import { enforceAgentPolicy } from "../agents/agent-policy"
 import { getDefaultModel } from "../registries/model-registry"
 import { logExecution } from "../logging/execution-logger"
+import { fetchCanonContext } from "../knowledge/canon-context"
 import { runClaudeAdapter } from "../providers/adapter-claude"
 import { runOpenAIAdapter } from "../providers/adapter-openai"
 import { runGeminiAdapter } from "../providers/adapter-gemini"
@@ -38,6 +39,12 @@ export async function executeAIRequest(
   // ── 1. Route the request ─────────────────────────────────────────────
   const routing = routeRequest(request)
 
+  // ── 1.5. Fetch canon context and merge into system prompt ─────────────
+  const canonResult = await fetchCanonContext(request)
+  const resolvedSystemPrompt = canonResult.skipped
+    ? agentSystemPrompt
+    : [agentSystemPrompt, canonResult.systemPromptBlock].filter(Boolean).join("\n\n")
+
   // ── 2. Enforce agent-level policy restrictions ───────────────────────
   const policyResult = enforceAgentPolicy(
     request.agentName,
@@ -59,7 +66,7 @@ export async function executeAIRequest(
 
   // ── 3. Execute primary adapter ───────────────────────────────────────
   const adapter = ADAPTERS[finalRouting.selectedProvider]
-  let response = await adapter(request, finalRouting, agentSystemPrompt)
+  let response = await adapter(request, finalRouting, resolvedSystemPrompt)
 
   // ── 4. Fallback on error ─────────────────────────────────────────────
   if (!response.success) {
@@ -77,7 +84,7 @@ export async function executeAIRequest(
     const fallbackResponse = await fallbackAdapter(
       request,
       fallbackRouting,
-      agentSystemPrompt
+      resolvedSystemPrompt
     )
 
     response = {
