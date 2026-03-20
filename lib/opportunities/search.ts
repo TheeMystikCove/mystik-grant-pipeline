@@ -1,6 +1,7 @@
 import { callAgent } from "@/lib/claude/call-agent";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { searchGrantsGov } from "./grants-gov";
+import { webSearchScout } from "./web-search-scout";
 import type { FunderType } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -67,7 +68,23 @@ export async function searchGrantOpportunities(
       })
     : Promise.resolve([]);
 
-  // ── Source 2: Claude scout (foundations, state, corporate) ───────────────
+  // ── Source 2: Web search scout (live community/state/local/corporate) ──────
+  // Skipped when searching federal-only
+  const webScoutPromise = (params.funderType === "" || params.funderType !== "federal")
+    ? webSearchScout({
+        programArea: params.programArea,
+        keywords: params.keywords,
+        geography: params.geography,
+        funderType: params.funderType,
+        orgName: org?.display_name ?? org?.legal_name ?? "",
+        orgMission: org?.mission ?? "",
+      }).catch((err) => {
+        console.warn("[search] web scout error:", err);
+        return [];
+      })
+    : Promise.resolve([]);
+
+  // ── Source 3: Claude scout (foundations, state, corporate) ───────────────
   const claudePromise = (params.funderType === "" || params.funderType !== "federal")
     ? callAgent({
         agentName: "grant_opportunity_scout",
@@ -91,8 +108,9 @@ export async function searchGrantOpportunities(
       })
     : Promise.resolve(null);
 
-  const [grantsGovResults, claudeOutput] = await Promise.all([
+  const [grantsGovResults, webScoutResults, claudeOutput] = await Promise.all([
     grantsGovPromise,
+    webScoutPromise,
     claudePromise,
   ]);
 
@@ -153,7 +171,25 @@ export async function searchGrantOpportunities(
     verification_status: "unverified" as const,
   }));
 
-  const allRows = [...federalRows, ...claudeRows];
+  // ── Normalize web scout results ───────────────────────────────────────────
+  const webScoutRows = (webScoutResults ?? []).map((item) => ({
+    organization_id: params.organizationId,
+    funder_name: item.funder_name,
+    name: item.name,
+    program_area: item.program_area,
+    funder_type: item.funder_type,
+    deadline: item.deadline,
+    award_min: item.award_min,
+    award_max: item.award_max,
+    geography: item.geography,
+    source_url: item.source_url,
+    eligibility_text: item.eligibility_text,
+    notes: item.notes,
+    status: "new",
+    verification_status: "web_verified" as const, // sourced from live web, not AI training data
+  }));
+
+  const allRows = [...federalRows, ...webScoutRows, ...claudeRows];
   if (allRows.length === 0) return [];
 
   // ── Deduplicate by (funder_name + name) before inserting ─────────────────

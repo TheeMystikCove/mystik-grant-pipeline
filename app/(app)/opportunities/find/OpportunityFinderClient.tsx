@@ -88,7 +88,8 @@ export function OpportunityFinderClient({ organizationId }: Props) {
   }
 
   const federalCount = results?.filter((r) => r.verification_status === "source_verified").length ?? 0;
-  const foundationCount = results ? results.length - federalCount : 0;
+  const webCount = results?.filter((r) => r.verification_status === "web_verified").length ?? 0;
+  const foundationCount = results ? results.length - federalCount - webCount : 0;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", maxWidth: "940px" }}>
@@ -197,10 +198,10 @@ export function OpportunityFinderClient({ organizationId }: Props) {
         <div style={{ ...cardStyle, padding: "2.5rem", textAlign: "center" as const }}>
           <Spinner />
           <p style={{ color: "var(--text-secondary)", fontSize: "0.875rem", marginTop: "1rem", marginBottom: "0.25rem" }}>
-            Searching Grants.gov + foundation database…
+            Searching Grants.gov · community foundations · state portals · private funders…
           </p>
           <p style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>
-            Federal results load first, then foundations. Results are saved automatically.
+            Three sources running in parallel. Results are saved and scored automatically.
           </p>
         </div>
       )}
@@ -226,10 +227,13 @@ export function OpportunityFinderClient({ organizationId }: Props) {
                     <><span style={{ color: "var(--text-secondary)" }}>{searchedFor}</span> · </>
                   )}
                   {federalCount > 0 && (
-                    <><span style={{ color: "var(--info)" }}>{federalCount} federal (live)</span>{foundationCount > 0 ? " · " : ""}</>
+                    <><span style={{ color: "var(--info)" }}>{federalCount} federal (Grants.gov live)</span>{webCount > 0 || foundationCount > 0 ? " · " : ""}</>
+                  )}
+                  {webCount > 0 && (
+                    <><span style={{ color: "var(--success)" }}>{webCount} web-sourced (community/state/local)</span>{foundationCount > 0 ? " · " : ""}</>
                   )}
                   {foundationCount > 0 && (
-                    <span style={{ color: "var(--warning)" }}>{foundationCount} foundation/state (AI — verify before applying)</span>
+                    <span style={{ color: "var(--warning)" }}>{foundationCount} AI-suggested (verify before applying)</span>
                   )}
                 </p>
               )}
@@ -262,7 +266,6 @@ export function OpportunityFinderClient({ organizationId }: Props) {
 // ─── Result Card ──────────────────────────────────────────────────────────────
 
 function ResultCard({ opp }: { opp: SearchResult }) {
-  const isLive = opp.verification_status === "source_verified";
 
   return (
     <div style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "1rem" }}>
@@ -271,7 +274,7 @@ function ResultCard({ opp }: { opp: SearchResult }) {
           <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
             {opp.name}
           </p>
-          <SourceBadge isLive={isLive} funderType={opp.funder_type} />
+          <SourceBadge verificationStatus={opp.verification_status} funderType={opp.funder_type} />
         </div>
 
         <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: "0.5rem" }}>
@@ -317,7 +320,7 @@ function ResultCard({ opp }: { opp: SearchResult }) {
         </a>
         {opp.source_url && (
           <a href={opp.source_url} target="_blank" rel="noopener noreferrer" style={btnSecondaryStyle}>
-            {isLive ? "Grants.gov ↗" : "Source ↗"}
+            {opp.verification_status === "source_verified" ? "Grants.gov ↗" : "Source ↗"}
           </a>
         )}
       </div>
@@ -327,11 +330,23 @@ function ResultCard({ opp }: { opp: SearchResult }) {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function SourceBadge({ isLive, funderType }: { isLive: boolean; funderType: string | null }) {
-  if (isLive) {
+function SourceBadge({ verificationStatus, funderType }: { verificationStatus: string; funderType: string | null }) {
+  if (verificationStatus === "source_verified") {
     return (
       <span style={{ fontSize: "0.625rem", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" as const, color: "var(--info)", background: "#1c2630", padding: "2px 6px", borderRadius: "3px" }}>
         Grants.gov Live
+      </span>
+    );
+  }
+  if (verificationStatus === "web_verified") {
+    const label =
+      funderType === "community_foundation" ? "Community Fdn" :
+      funderType === "state" ? "State Gov" :
+      funderType === "local" ? "Local Gov" :
+      funderType === "corporate" ? "Corporate" : "Web Sourced";
+    return (
+      <span style={{ fontSize: "0.625rem", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" as const, color: "var(--success)", background: "#1a2a1a", padding: "2px 6px", borderRadius: "3px" }}>
+        {label} · Web
       </span>
     );
   }
@@ -341,7 +356,7 @@ function SourceBadge({ isLive, funderType }: { isLive: boolean; funderType: stri
     funderType === "corporate" ? "Corporate" : "Foundation";
   return (
     <span style={{ fontSize: "0.625rem", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" as const, color: "var(--warning)", background: "#2a2318", padding: "2px 6px", borderRadius: "3px" }}>
-      {label} · Verify
+      {label} · AI
     </span>
   );
 }
