@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { deleteOpportunities } from "./actions";
 import { startProposal } from "./[id]/actions";
@@ -20,6 +20,8 @@ interface Props {
   opportunities: Opportunity[];
 }
 
+type SortBy = "deadline" | "amount" | "score" | "status";
+
 const STATUS_COLORS: Record<string, string> = {
   identified: "var(--text-muted)",
   pursuing: "var(--info)",
@@ -27,6 +29,15 @@ const STATUS_COLORS: Record<string, string> = {
   awarded: "var(--success)",
   declined: "var(--danger)",
   monitoring: "var(--warning)",
+};
+
+const STATUS_ORDER: Record<string, number> = {
+  pursuing: 0,
+  monitoring: 1,
+  identified: 2,
+  submitted: 3,
+  awarded: 4,
+  declined: 5,
 };
 
 function formatCurrency(n: number | null): string {
@@ -57,12 +68,35 @@ export function OpportunitiesListClient({ opportunities }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortBy>("deadline");
 
-  const allSelected = opportunities.length > 0 && selected.size === opportunities.length;
+  const sortedOpportunities = useMemo(() => {
+    const arr = [...opportunities];
+    if (sortBy === "deadline") {
+      return arr.sort((a, b) => {
+        if (!a.deadline && !b.deadline) return 0;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+      });
+    }
+    if (sortBy === "amount") {
+      return arr.sort((a, b) => (b.award_max ?? 0) - (a.award_max ?? 0));
+    }
+    if (sortBy === "score") {
+      return arr.sort((a, b) => (b.opportunity_scores?.total_score ?? -1) - (a.opportunity_scores?.total_score ?? -1));
+    }
+    if (sortBy === "status") {
+      return arr.sort((a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99));
+    }
+    return arr;
+  }, [opportunities, sortBy]);
+
+  const allSelected = sortedOpportunities.length > 0 && selected.size === sortedOpportunities.length;
   const someSelected = selected.size > 0 && !allSelected;
 
   function toggleAll() {
-    setSelected(allSelected ? new Set() : new Set(opportunities.map((o) => o.id)));
+    setSelected(allSelected ? new Set() : new Set(sortedOpportunities.map((o) => o.id)));
   }
 
   function toggleOne(id: string, e: React.MouseEvent) {
@@ -100,8 +134,43 @@ export function OpportunitiesListClient({ opportunities }: Props) {
     );
   }
 
+  const SORT_PILLS: { key: SortBy; label: string }[] = [
+    { key: "deadline", label: "Deadline ↑" },
+    { key: "amount",   label: "Amount ↓" },
+    { key: "score",    label: "Score ★" },
+    { key: "status",   label: "Status" },
+  ];
+
   return (
     <div>
+      {/* Sort pills */}
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", marginRight: "0.25rem" }}>
+          Sort:
+        </span>
+        {SORT_PILLS.map(({ key, label }) => {
+          const isActive = sortBy === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setSortBy(key)}
+              style={{
+                background: isActive ? "var(--accent)" : "var(--surface-raised)",
+                color: isActive ? "#efe8d6" : "var(--text-secondary)",
+                border: `1px solid ${isActive ? "var(--accent)" : "var(--border)"}`,
+                borderRadius: "20px",
+                padding: "0.3rem 0.75rem",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       {/* Bulk action bar */}
       {selected.size > 0 && (
         <div style={{
@@ -149,7 +218,7 @@ export function OpportunitiesListClient({ opportunities }: Props) {
         </div>
 
         {/* Rows */}
-        {opportunities.map((opp, i) => {
+        {sortedOpportunities.map((opp, i) => {
           const days = daysUntil(opp.deadline);
           const urgent = days != null && days >= 0 && days <= 14;
           const color = STATUS_COLORS[opp.status] ?? "var(--text-muted)";
@@ -163,7 +232,7 @@ export function OpportunitiesListClient({ opportunities }: Props) {
                 display: "grid",
                 gridTemplateColumns: COLS,
                 padding: "0.875rem 1.25rem",
-                borderBottom: i < opportunities.length - 1 ? "1px solid var(--border-muted)" : "none",
+                borderBottom: i < sortedOpportunities.length - 1 ? "1px solid var(--border-muted)" : "none",
                 alignItems: "center",
                 background: isSelected ? "var(--surface-accent)" : "transparent",
                 cursor: "pointer",
