@@ -10,6 +10,7 @@ const NAV = [
 ];
 
 const OS_NAV = [
+  { href: "/os/agents", label: "Agents", icon: "✦" },
   { href: "/os/canon", label: "Canon Registry", icon: "◆" },
   { href: "/os/ai-console", label: "AI Console", icon: "◉" },
 ];

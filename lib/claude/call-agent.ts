@@ -1,21 +1,22 @@
 /**
- * Core Claude API caller for all grant engine agents.
+ * Core agent caller for all grant engine pipeline agents.
  *
- * Every adapter calls this function. It:
- * 1. Loads the skill's .md file as the system prompt
- * 2. Serializes the enriched input as the user turn
- * 3. Calls claude-sonnet-4-6 with extended thinking disabled (fast pipeline)
- * 4. Parses the response — expects a JSON block conforming to AgentOutput
- * 5. Falls back gracefully if the model returns prose instead of JSON
+ * Routes every agent call through the NEXIS AI gateway so each gets:
+ *   - Provider routing via agent policy (narrative → claude, scout → perplexity, etc.)
+ *   - Canon context injection from the knowledge layer
+ *   - Agent policy enforcement (provider restrictions)
+ *   - Execution logging to agent_runs
+ *
+ * The skill .md file is used as the agent system prompt.
+ * The gateway appends canon context on top of it automatically.
  */
 
-import type Anthropic from "@anthropic-ai/sdk";
-import { getAnthropicClient } from "./client";
-import { loadSkillPrompt } from "./skills";
-import type { AgentOutput, ConfidenceLevel } from "@/types";
-
-const MODEL = "claude-sonnet-4-6";
-const MAX_TOKENS = 8192;
+import { randomUUID } from "crypto"
+import { executeAIRequest } from "@/lib/nexis/gateway/ai-gateway"
+import { getAgentPolicy } from "@/lib/nexis/agents/agent-policy"
+import { loadSkillPrompt } from "./skills"
+import type { AgentOutput, ConfidenceLevel } from "@/types"
+import type { NexisBranch } from "@/lib/nexis/schemas/ai-request"
 
 const OUTPUT_SCHEMA_INSTRUCTION = `
 ## Required Output Format
@@ -44,98 +45,97 @@ Wrap it in triple-backtick json fences:
 
 Do not omit any field. Use empty arrays [] for list fields with no items.
 Use an empty object {} for structured_output or handoff_payload if not applicable.
-`.trim();
+`.trim()
 
 export async function callAgent(params: {
-  agentName: string;
-  input: Record<string, unknown>;
+  agentName: string
+  input: Record<string, unknown>
 }): Promise<AgentOutput> {
-  const { agentName, input } = params;
+  const { agentName, input } = params
 
-  const skillPrompt = loadSkillPrompt(agentName);
-  const systemPrompt = `${skillPrompt}\n\n---\n\n${OUTPUT_SCHEMA_INSTRUCTION}`;
+  // Load skill file as agent system prompt
+  const skillPrompt = loadSkillPrompt(agentName)
+  const agentSystemPrompt = `${skillPrompt}\n\n---\n\n${OUTPUT_SCHEMA_INSTRUCTION}`
 
-  const userMessage = buildUserMessage(input);
+  // Look up routing policy for this agent
+  const policy = getAgentPolicy(agentName)
+  const taskType = policy?.preferredTaskTypes?.[0] ?? "general"
+  const branch = policy?.domain as NexisBranch | undefined
 
-  const client = getAnthropicClient();
+  // Build the user message (serialized context for the agent)
+  const userMessage = buildUserMessage(input)
 
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: MAX_TOKENS,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userMessage }],
-    stream: false,
-  });
+  // Route through the NEXIS gateway — gets canon injection, routing, policy, logging
+  const response = await executeAIRequest(
+    {
+      requestId: randomUUID(),
+      agentName,
+      taskType,
+      prompt: userMessage,
+      branch,
+      sensitivity: policy?.sensitivity ?? "medium",
+      requiresCitations: policy?.requiresCitations ?? false,
+      requiresTools: false,
+      outputFormat: "text",
+      stream: false,
+    },
+    agentSystemPrompt
+  )
 
-  const rawText = extractText(response as Anthropic.Message);
-  return parseAgentOutput(rawText, agentName);
+  if (!response.success) {
+    throw new Error(response.error ?? `Agent ${agentName} failed`)
+  }
+
+  return parseAgentOutput(response.output, agentName)
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function buildUserMessage(input: Record<string, unknown>): string {
-  const parts: string[] = [];
+  const parts: string[] = []
 
-  // Surface the most relevant fields first for readability
   if (input.proposal_project) {
-    parts.push(`## Proposal Project\n${JSON.stringify(input.proposal_project, null, 2)}`);
+    parts.push(`## Proposal Project\n${JSON.stringify(input.proposal_project, null, 2)}`)
   }
   if (input.intake) {
-    parts.push(`## Project Intake\n${JSON.stringify(input.intake, null, 2)}`);
+    parts.push(`## Project Intake\n${JSON.stringify(input.intake, null, 2)}`)
   }
   if (input.prior_outputs && Object.keys(input.prior_outputs as object).length > 0) {
-    parts.push(`## Prior Agent Outputs\n${JSON.stringify(input.prior_outputs, null, 2)}`);
+    parts.push(`## Prior Agent Outputs\n${JSON.stringify(input.prior_outputs, null, 2)}`)
   }
 
-  // Remaining input fields
   const remaining = Object.fromEntries(
     Object.entries(input).filter(
       ([k]) => !["proposal_project", "intake", "prior_outputs"].includes(k)
     )
-  );
+  )
   if (Object.keys(remaining).length > 0) {
-    parts.push(`## Additional Context\n${JSON.stringify(remaining, null, 2)}`);
+    parts.push(`## Additional Context\n${JSON.stringify(remaining, null, 2)}`)
   }
 
   if (parts.length === 0) {
-    parts.push("No context provided. Apply your skill using general best practices.");
+    parts.push("No context provided. Apply your skill using general best practices.")
   }
 
-  return parts.join("\n\n");
-}
-
-function extractText(response: Anthropic.Message): string {
-  return response.content
-    .filter((block): block is Anthropic.TextBlock => block.type === "text")
-    .map((block) => block.text)
-    .join("\n");
+  return parts.join("\n\n")
 }
 
 function parseAgentOutput(raw: string, agentName: string): AgentOutput {
-  // Try to extract a ```json ... ``` block first
-  const jsonMatch = raw.match(/```json\s*([\s\S]*?)```/);
+  const jsonMatch = raw.match(/```json\s*([\s\S]*?)```/)
   if (jsonMatch) {
     try {
-      const parsed = JSON.parse(jsonMatch[1].trim());
-      return normalizeOutput(parsed);
-    } catch {
-      // Fall through to prose fallback
-    }
+      return normalizeOutput(JSON.parse(jsonMatch[1].trim()))
+    } catch { /* fall through */ }
   }
 
-  // Try bare JSON object anywhere in the text
-  const bareMatch = raw.match(/\{[\s\S]*"summary"[\s\S]*\}/);
+  const bareMatch = raw.match(/\{[\s\S]*"summary"[\s\S]*\}/)
   if (bareMatch) {
     try {
-      const parsed = JSON.parse(bareMatch[0]);
-      return normalizeOutput(parsed);
-    } catch {
-      // Fall through to prose fallback
-    }
+      return normalizeOutput(JSON.parse(bareMatch[0]))
+    } catch { /* fall through */ }
   }
 
-  // Prose fallback — wrap the full text as the summary
-  console.warn(`[${agentName}] Could not parse JSON from response — using prose fallback`);
+  console.warn(`[${agentName}] Could not parse JSON from response — using prose fallback`)
   return {
     summary: raw.slice(0, 500),
     assumptions: ["Output was prose, not structured JSON — review manually"],
@@ -144,7 +144,7 @@ function parseAgentOutput(raw: string, agentName: string): AgentOutput {
     structured_output: { full_response: raw },
     handoff_payload: {},
     confidence_level: "low",
-  };
+  }
 }
 
 function normalizeOutput(raw: Record<string, unknown>): AgentOutput {
@@ -162,5 +162,5 @@ function normalizeOutput(raw: Record<string, unknown>): AgentOutput {
     confidence_level: (["high", "medium", "low"].includes(raw.confidence_level as string)
       ? raw.confidence_level
       : "medium") as ConfidenceLevel,
-  };
+  }
 }
