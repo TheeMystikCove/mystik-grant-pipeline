@@ -3,7 +3,8 @@
 import { useState } from "react"
 import { Topbar } from "@/components/layout/topbar"
 import { NEXIS_AGENT_DEFINITIONS, type NexisAgentDefinition } from "@/lib/nexis/agents/agent-definitions"
-import { pageShell, card, fieldLabel, inputField, primaryButton, primaryButtonDisabled, outputPanel, microLabel, statusChip, errorBox } from "@/lib/ui/styles"
+import { pageShell, card, fieldLabel, inputField, primaryButton, primaryButtonDisabled, microLabel, statusChip, errorBox } from "@/lib/ui/styles"
+import { MarkdownOutput } from "@/components/nexis/MarkdownOutput"
 import type { AgentRunResult } from "@/lib/nexis/agents/agent-runner"
 
 // ── Domain color map ──────────────────────────────────────────────────────────
@@ -27,7 +28,7 @@ export default function AgentsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function handleRun(e: React.FormEvent<HTMLFormElement>) {
+  async function handleRun(e: { preventDefault(): void }) {
     e.preventDefault()
     if (!selected || !prompt.trim()) return
     setLoading(true)
@@ -238,12 +239,7 @@ export default function AgentsPage() {
                   </div>
 
                   {/* Output */}
-                  <div style={outputPanel}>
-                    <p style={{ ...microLabel, marginBottom: "0.75rem" }}>Output</p>
-                    <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: "0.875rem", lineHeight: 1.65, color: "var(--text-primary)", margin: 0, fontFamily: "Inter, system-ui, sans-serif" }}>
-                      {result.output || "(empty response)"}
-                    </pre>
-                  </div>
+                  <MarkdownOutput content={result.output || "(empty response)"} />
                 </div>
               )}
             </>

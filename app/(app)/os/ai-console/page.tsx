@@ -2,10 +2,10 @@
 
 import { useState } from "react"
 import { Topbar } from "@/components/layout/topbar"
+import { MarkdownOutput } from "@/components/nexis/MarkdownOutput"
 import {
   pageShell,
   card,
-  outputPanel,
   fieldLabel,
   inputField,
   primaryButton,
@@ -233,12 +233,7 @@ export default function AIConsolePage() {
             </div>
 
             {/* Output */}
-            <div style={outputPanel}>
-              <p style={{ ...microLabel, marginBottom: "0.75rem" }}>Output</p>
-              <pre style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: "0.875rem", lineHeight: 1.65, color: "var(--text-primary)", margin: 0, fontFamily: "Inter, system-ui, sans-serif" }}>
-                {response.output || "(empty response)"}
-              </pre>
-            </div>
+            <MarkdownOutput content={response.output || "(empty response)"} />
 
             {/* Citations */}
             {response.citations && response.citations.length > 0 && (
