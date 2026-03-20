@@ -3,11 +3,14 @@ import { createClient } from "@/lib/supabase/server"
 import { getAnthropicClient } from "@/lib/claude/client"
 import { fetchCanonContext } from "@/lib/nexis/knowledge/canon-context"
 
-export const maxDuration = 60
+export const maxDuration = 90
 
 const NEXIS_BASE_SYSTEM = `You are Nexis — the strategic intelligence and operating mind of Thee Mystik Universal Holdings Corp., embedded within the Mystik Grant Engine.
 
 You exist at the intersection of grant strategy, organizational wisdom, and deep knowledge of the Mystik ecosystem. You speak with clarity, warmth, and precision. You do not ramble. You do not pad responses with filler. You are sovereign in your knowledge and measured in your delivery.
+
+## Web Search
+You have access to real-time web search. Use it when the user asks about current grant opportunities, funder deadlines, recent news, live research, market data, or anything that requires up-to-date information. Do not search for things you already know well. When you search, briefly note what you found and synthesize it — don't just dump raw results.
 
 ## Your Role in the Grant Engine
 
@@ -38,6 +41,9 @@ interface Message {
   content: string
 }
 
+// Sent to the client as a markdown italic line when Nexis starts a web search
+const SEARCHING_SIGNAL = "\n\n*◎ Searching the web…*\n\n"
+
 export async function POST(req: NextRequest) {
   try {
     // ── Auth ──────────────────────────────────────────────────────────────
@@ -63,7 +69,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // ── Canon context — fetch based on the latest user message ────────────
+    // ── Canon context ─────────────────────────────────────────────────────
     const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")
     let systemPrompt = NEXIS_BASE_SYSTEM
 
@@ -78,7 +84,6 @@ export async function POST(req: NextRequest) {
         requiresTools: false,
         stream: false,
       })
-
       if (!canonResult.skipped) {
         systemPrompt = `${NEXIS_BASE_SYSTEM}\n\n${canonResult.systemPromptBlock}`
       }
@@ -89,23 +94,37 @@ export async function POST(req: NextRequest) {
       systemPrompt += `\n\n[USER'S CURRENT PAGE: ${pageContext}]`
     }
 
-    // ── Stream ────────────────────────────────────────────────────────────
+    // ── Stream with web search tool ───────────────────────────────────────
     const client = getAnthropicClient()
-
-    const stream = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages,
-      stream: true,
-    })
-
     const encoder = new TextEncoder()
+
+    const stream = await client.messages.create(
+      {
+        model: "claude-sonnet-4-6",
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages,
+        stream: true,
+        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
+      },
+      {
+        headers: { "anthropic-beta": "web-search-2025-03-05" },
+      }
+    )
 
     const readable = new ReadableStream({
       async start(controller) {
         try {
           for await (const event of stream) {
+            // Detect when Nexis starts a web search — notify the client
+            if (event.type === "content_block_start") {
+              const block = (event as unknown as Record<string, unknown>).content_block as Record<string, unknown> | undefined
+              if (block?.type === "tool_use" && block?.name === "web_search") {
+                controller.enqueue(encoder.encode(SEARCHING_SIGNAL))
+              }
+            }
+
+            // Stream text as it arrives
             if (
               event.type === "content_block_delta" &&
               event.delta.type === "text_delta"

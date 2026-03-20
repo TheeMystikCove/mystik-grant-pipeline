@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useTransition } from "react";
 import { usePathname } from "next/navigation";
+import { MarkdownOutput } from "./MarkdownOutput";
 
 interface Message {
   role: "user" | "assistant";
@@ -300,32 +301,26 @@ export function NexisPanel() {
                     Nexis
                   </span>
                 )}
-                <div
-                  style={{
-                    maxWidth: "88%",
-                    padding: "0.5625rem 0.75rem",
-                    background:
-                      msg.role === "user"
-                        ? "var(--accent)"
-                        : "var(--surface-raised)",
-                    border:
-                      msg.role === "user"
-                        ? "none"
-                        : "1px solid var(--border-muted)",
-                    borderRadius: "2px",
-                    fontSize: "0.8125rem",
-                    color:
-                      msg.role === "user" ? "#efe8d6" : "var(--text-secondary)",
-                    lineHeight: 1.65,
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {msg.content}
-                  {/* Streaming cursor */}
-                  {streaming &&
-                    i === messages.length - 1 &&
-                    msg.role === "assistant" && (
+                {msg.role === "user" ? (
+                  <div
+                    style={{
+                      maxWidth: "88%",
+                      padding: "0.5625rem 0.75rem",
+                      background: "var(--accent)",
+                      borderRadius: "2px",
+                      fontSize: "0.8125rem",
+                      color: "#efe8d6",
+                      lineHeight: 1.65,
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {msg.content}
+                  </div>
+                ) : (
+                  <div style={{ maxWidth: "92%", position: "relative" }}>
+                    <MarkdownOutput content={msg.content} withPanel={false} />
+                    {/* Streaming cursor */}
+                    {streaming && i === messages.length - 1 && (
                       <span
                         style={{
                           display: "inline-block",
@@ -338,7 +333,8 @@ export function NexisPanel() {
                         }}
                       />
                     )}
-                </div>
+                  </div>
+                )}
               </div>
             ))}
             <div ref={bottomRef} />
