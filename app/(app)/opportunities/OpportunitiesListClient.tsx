@@ -69,6 +69,28 @@ export function OpportunitiesListClient({ opportunities }: Props) {
   const [isPending, startTransition] = useTransition();
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>("deadline");
+  const [rescoring, setRescoring] = useState(false);
+  const [rescoreMsg, setRescoreMsg] = useState<string | null>(null);
+
+  async function handleRescore() {
+    setRescoring(true);
+    setRescoreMsg(null);
+    try {
+      const res = await fetch("/api/opportunities/rescore", { method: "POST" });
+      const data = await res.json();
+      if (data.queued === 0) {
+        setRescoreMsg("All opportunities already have scores.");
+        setRescoring(false);
+        return;
+      }
+      setRescoreMsg(`Scoring ${data.queued} opportunities… refresh in ~30s to see scores.`);
+      // Auto-refresh after 35s to pick up completed scores
+      setTimeout(() => { router.refresh(); setRescoring(false); setRescoreMsg(null); }, 35_000);
+    } catch {
+      setRescoreMsg("Rescore failed. Try again.");
+      setRescoring(false);
+    }
+  }
 
   const sortedOpportunities = useMemo(() => {
     const arr = [...opportunities];
@@ -143,9 +165,9 @@ export function OpportunitiesListClient({ opportunities }: Props) {
 
   return (
     <div>
-      {/* Sort pills */}
-      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", marginRight: "0.25rem" }}>
+      {/* Sort pills + rescore */}
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem", alignItems: "center", flexWrap: "wrap" as const }}>
+        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" as const, marginRight: "0.25rem" }}>
           Sort:
         </span>
         {SORT_PILLS.map(({ key, label }) => {
@@ -169,6 +191,31 @@ export function OpportunitiesListClient({ opportunities }: Props) {
             </button>
           );
         })}
+
+        {/* Spacer */}
+        <span style={{ flex: 1 }} />
+
+        {/* Rescore button + status */}
+        {rescoreMsg && (
+          <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>{rescoreMsg}</span>
+        )}
+        <button
+          onClick={handleRescore}
+          disabled={rescoring}
+          style={{
+            background: "transparent",
+            color: rescoring ? "var(--text-muted)" : "var(--text-secondary)",
+            border: "1px solid var(--border)",
+            borderRadius: "20px",
+            padding: "0.3rem 0.75rem",
+            fontSize: "0.75rem",
+            fontWeight: 600,
+            cursor: rescoring ? "not-allowed" : "pointer",
+            opacity: rescoring ? 0.6 : 1,
+          }}
+        >
+          {rescoring ? "Scoring…" : "⟳ Score All"}
+        </button>
       </div>
 
       {/* Bulk action bar */}
