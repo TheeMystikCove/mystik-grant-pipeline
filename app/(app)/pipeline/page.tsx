@@ -31,7 +31,13 @@ async function getPipelineData() {
     .select("id, name, funder_name, funder_type, program_area, status, deadline, award_min, award_max, notes, opportunity_scores(total_score, label, strategic_fit_score, eligibility_score)")
     .not("status", "in", '("archived","rejected")')
     .order("deadline", { ascending: true, nullsFirst: false })
-  return (data ?? []) as unknown as OppWithScore[]
+  // Supabase returns opportunity_scores as an array (one-to-many); normalize to single object
+  return (data ?? []).map((row: any) => ({
+    ...row,
+    opportunity_scores: Array.isArray(row.opportunity_scores)
+      ? (row.opportunity_scores[0] ?? null)
+      : (row.opportunity_scores ?? null),
+  })) as OppWithScore[]
 }
 
 // ── Stage config ──────────────────────────────────────────────────────────────

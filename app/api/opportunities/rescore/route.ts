@@ -87,7 +87,9 @@ async function scoreOne(supabase: ReturnType<typeof createAdminClient>, opp: Opp
   });
   const score = scoreOutput.structured_output;
 
-  await supabase.from("opportunity_scores").upsert({
+  // Delete any existing score then insert fresh (avoids unique constraint dependency)
+  await supabase.from("opportunity_scores").delete().eq("opportunity_id", opp.id);
+  await supabase.from("opportunity_scores").insert({
     opportunity_id: opp.id,
     strategic_fit_score: Number(score.strategic_fit_score ?? 0),
     eligibility_score: Number(score.eligibility_score ?? 0),
@@ -97,7 +99,7 @@ async function scoreOne(supabase: ReturnType<typeof createAdminClient>, opp: Opp
     total_score: Number(score.total_score ?? score.priority_score ?? 0),
     label: score.label ? String(score.label) : null,
     rationale: score.rationale ? String(score.rationale) : null,
-  }, { onConflict: "opportunity_id" });
+  });
 
   await supabase
     .from("opportunities")

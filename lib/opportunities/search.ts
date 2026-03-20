@@ -297,6 +297,8 @@ async function runScoringForOpportunity(
       input: oppContext,
     });
     const score = scoreOutput.structured_output;
+    // Delete any existing score first so re-scoring doesn't conflict
+    await supabase.from("opportunity_scores").delete().eq("opportunity_id", opportunityId);
     await supabase.from("opportunity_scores").insert({
       opportunity_id: opportunityId,
       strategic_fit_score: Number(score.strategic_fit_score ?? 0),

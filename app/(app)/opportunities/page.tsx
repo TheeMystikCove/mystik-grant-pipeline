@@ -16,7 +16,13 @@ async function getOpportunities() {
     .from("opportunities")
     .select("*, opportunity_scores(*)")
     .order("deadline", { ascending: true });
-  return (data ?? []) as (Opportunity & { opportunity_scores: { total_score: number; label: string } | null })[];
+  // Supabase returns opportunity_scores as an array (one-to-many); normalize to single object
+  return (data ?? []).map((row: any) => ({
+    ...row,
+    opportunity_scores: Array.isArray(row.opportunity_scores)
+      ? (row.opportunity_scores[0] ?? null)
+      : (row.opportunity_scores ?? null),
+  })) as (Opportunity & { opportunity_scores: { total_score: number; label: string } | null })[];
 }
 
 async function getOrgId(): Promise<string | null> {
