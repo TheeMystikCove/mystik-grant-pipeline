@@ -4,6 +4,7 @@ import { useState, useTransition, useEffect } from "react";
 import {
   updateProfile,
   updateOrganization,
+  updateOrganizationProfile,
   changePassword,
   disconnectGoogle,
   setGoogleCalendar,
@@ -20,6 +21,13 @@ interface OrgData {
   annual_budget_range: string | null;
 }
 
+interface OrgProfileData {
+  target_populations_json: string[] | null;
+  strategic_priorities_json: string[] | null;
+  readiness_notes: string | null;
+  registrations_json: Record<string, string> | null;
+}
+
 interface TeamMember {
   id: string;
   full_name: string | null;
@@ -33,6 +41,7 @@ interface Props {
   email: string;
   role: string;
   org: OrgData | null;
+  orgProfile: OrgProfileData | null;
   initialTab?: string;
   googleConnected: boolean;
   googleCalendarId: string | null;
@@ -63,6 +72,7 @@ export function AccountSettingsClient({
   email,
   role,
   org,
+  orgProfile,
   initialTab,
   googleConnected,
   googleCalendarId,
@@ -100,6 +110,19 @@ export function AccountSettingsClient({
         showFeedback("organization", result);
       } catch (err) {
         showFeedback("organization", { error: err instanceof Error ? err.message : "An unexpected error occurred." });
+      }
+    });
+  }
+
+  function handleOrgProfileSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    startTransition(async () => {
+      try {
+        const result = await updateOrganizationProfile(fd);
+        showFeedback("ai_profile", result);
+      } catch (err) {
+        showFeedback("ai_profile", { error: err instanceof Error ? err.message : "An unexpected error occurred." });
       }
     });
   }
@@ -176,49 +199,113 @@ export function AccountSettingsClient({
 
         {/* Organization tab */}
         {activeTab === "organization" && (
-          <form onSubmit={handleOrgSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-            <SectionHeader title="Organization" subtitle="Details used across all proposals and grant applications." />
+          <>
+            <form onSubmit={handleOrgSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+              <SectionHeader title="Organization" subtitle="Details used across all proposals and grant applications." />
 
-            {org ? (
-              <>
+              {org ? (
+                <>
+                  <FormCard>
+                    <Field label="Legal Organization Name" required>
+                      <Input name="legal_name" defaultValue={org.legal_name} placeholder="Full legal name" required />
+                    </Field>
+                    <Field label="Display Name">
+                      <Input name="display_name" defaultValue={org.display_name ?? ""} placeholder="Short name or DBA" />
+                    </Field>
+                    <Field label="Entity Type">
+                      <select name="entity_type" defaultValue={org.entity_type ?? ""} style={inputStyle}>
+                        <option value="">— Select —</option>
+                        {ENTITY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </Field>
+                    <Field label="Geography Served">
+                      <Input name="geography" defaultValue={org.geography ?? ""} placeholder="e.g. Northeast Ohio, National" />
+                    </Field>
+                    <Field label="Annual Budget Range">
+                      <Input name="annual_budget_range" defaultValue={org.annual_budget_range ?? ""} placeholder="e.g. $250,000–$500,000" />
+                    </Field>
+                  </FormCard>
+
+                  <FormCard>
+                    <Field label="Mission Statement">
+                      <textarea name="mission" defaultValue={org.mission ?? ""} rows={4} placeholder="Your organization's mission…" style={{ ...inputStyle, resize: "vertical" }} />
+                    </Field>
+                    <Field label="Vision Statement">
+                      <textarea name="vision" defaultValue={org.vision ?? ""} rows={3} placeholder="Your organization's vision…" style={{ ...inputStyle, resize: "vertical" }} />
+                    </Field>
+                  </FormCard>
+
+                  <FormFooter isPending={isPending} feedback={feedback?.tab === "organization" ? feedback : null} />
+                </>
+              ) : (
+                <div style={{ ...cardStyle, padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
+                  No organization is linked to your account. Contact your administrator.
+                </div>
+              )}
+            </form>
+
+            {/* AI Grant Intelligence Profile — second form, same tab */}
+            {org && (
+              <form onSubmit={handleOrgProfileSubmit} style={{ display: "flex", flexDirection: "column", gap: "1.25rem", marginTop: "2rem" }}>
+                <SectionHeader
+                  title="AI Grant Intelligence Profile"
+                  subtitle="Used by NEXIS to score opportunities and generate proposal content. The more complete, the better."
+                />
+
                 <FormCard>
-                  <Field label="Legal Organization Name" required>
-                    <Input name="legal_name" defaultValue={org.legal_name} placeholder="Full legal name" required />
+                  <Field label="Target Populations">
+                    <textarea
+                      name="target_populations"
+                      defaultValue={(orgProfile?.target_populations_json ?? []).join("\n")}
+                      rows={4}
+                      placeholder={"One population per line, e.g.:\nVeterans with PTSD\nLow-income youth ages 14–24\nUnhoused adults in recovery"}
+                      style={{ ...inputStyle, resize: "vertical" }}
+                    />
+                    <Hint>Enter one population per line. These appear in every grant scoring and proposal.</Hint>
                   </Field>
-                  <Field label="Display Name">
-                    <Input name="display_name" defaultValue={org.display_name ?? ""} placeholder="Short name or DBA" />
+                  <Field label="Strategic Priorities">
+                    <textarea
+                      name="strategic_priorities"
+                      defaultValue={(orgProfile?.strategic_priorities_json ?? []).join("\n")}
+                      rows={4}
+                      placeholder={"One priority per line, e.g.:\nTrauma-informed care\nWorkforce development\nMental health access"}
+                      style={{ ...inputStyle, resize: "vertical" }}
+                    />
+                    <Hint>Enter one priority per line. Used to match grant alignment scores.</Hint>
                   </Field>
-                  <Field label="Entity Type">
-                    <select name="entity_type" defaultValue={org.entity_type ?? ""} style={inputStyle}>
-                      <option value="">— Select —</option>
-                      {ENTITY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Geography Served">
-                    <Input name="geography" defaultValue={org.geography ?? ""} placeholder="e.g. Northeast Ohio, National" />
-                  </Field>
-                  <Field label="Annual Budget Range">
-                    <Input name="annual_budget_range" defaultValue={org.annual_budget_range ?? ""} placeholder="e.g. $250,000–$500,000" />
+                  <Field label="Capacity & Readiness Notes">
+                    <textarea
+                      name="readiness_notes"
+                      defaultValue={orgProfile?.readiness_notes ?? ""}
+                      rows={3}
+                      placeholder="e.g. We have 2 FTEs with grant management experience, active SAM.gov registration, and a signed audit for FY2024."
+                      style={{ ...inputStyle, resize: "vertical" }}
+                    />
+                    <Hint>Summarize your org&apos;s readiness to execute and report on grants.</Hint>
                   </Field>
                 </FormCard>
 
                 <FormCard>
-                  <Field label="Mission Statement">
-                    <textarea name="mission" defaultValue={org.mission ?? ""} rows={4} placeholder="Your organization's mission…" style={{ ...inputStyle, resize: "vertical" }} />
+                  <p style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.25rem" }}>Registrations & Compliance</p>
+                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginBottom: "0.875rem" }}>Used by the eligibility scorer and compliance QA agent.</p>
+                  <Field label="EIN (Employer Identification Number)">
+                    <Input name="reg_ein" defaultValue={orgProfile?.registrations_json?.ein ?? ""} placeholder="e.g. 12-3456789" />
                   </Field>
-                  <Field label="Vision Statement">
-                    <textarea name="vision" defaultValue={org.vision ?? ""} rows={3} placeholder="Your organization's vision…" style={{ ...inputStyle, resize: "vertical" }} />
+                  <Field label="SAM.gov UEI">
+                    <Input name="reg_sam_uei" defaultValue={orgProfile?.registrations_json?.sam_uei ?? ""} placeholder="e.g. ABCDE123FGH4" />
+                  </Field>
+                  <Field label="Grants.gov Username">
+                    <Input name="reg_grants_gov" defaultValue={orgProfile?.registrations_json?.grants_gov ?? ""} placeholder="e.g. mystik_grants" />
+                  </Field>
+                  <Field label="State Charity Registration">
+                    <Input name="reg_state_charity" defaultValue={orgProfile?.registrations_json?.state_charity ?? ""} placeholder="e.g. Ohio — CH123456 — expires 2026-12-31" />
                   </Field>
                 </FormCard>
 
-                <FormFooter isPending={isPending} feedback={feedback?.tab === "organization" ? feedback : null} />
-              </>
-            ) : (
-              <div style={{ ...cardStyle, padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
-                No organization is linked to your account. Contact your administrator.
-              </div>
+                <FormFooter isPending={isPending} feedback={feedback?.tab === "ai_profile" ? feedback : null} label="Save AI Profile" />
+              </form>
             )}
-          </form>
+          </>
         )}
 
         {/* Security tab */}

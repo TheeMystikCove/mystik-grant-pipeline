@@ -6,6 +6,7 @@ import { PIPELINE_SEQUENCE, PARALLEL_TIER } from "@/lib/agents/orchestrator";
 import { approveGate } from "./actions";
 import { RunAgentButton } from "@/components/proposals/RunAgentButton";
 import type { AgentName, AgentRun, ProposalSection } from "@/types";
+import { SectionMarkdown } from "@/components/proposals/SectionMarkdown";
 
 // Fields the user must fill before agents can run
 const REQUIRED_INTAKE_FIELDS = [
@@ -485,16 +486,7 @@ function SectionCard({
         </div>
       </div>
       <div style={{ padding: "1rem 1.25rem" }}>
-        <p
-          style={{
-            fontSize: "0.8125rem",
-            color: "var(--text-secondary)",
-            lineHeight: 1.75,
-            whiteSpace: "pre-wrap",
-          }}
-        >
-          {section.draft_text}
-        </p>
+        <SectionMarkdown content={section.draft_text ?? ""} />
       </div>
     </div>
   );

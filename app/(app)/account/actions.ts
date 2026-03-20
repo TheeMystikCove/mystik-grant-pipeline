@@ -143,6 +143,59 @@ export async function setGoogleCalendar(formData: FormData): Promise<{ error?: s
   }
 }
 
+// ── Update organization AI grant profile ─────────────────────────────────────
+
+export async function updateOrganizationProfile(formData: FormData): Promise<{ error?: string; success?: boolean }> {
+  try {
+    const supabase = await createServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { error: "Not authenticated." };
+
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("organization_id")
+      .eq("auth_user_id", user.id)
+      .single();
+
+    if (!userRow?.organization_id) return { error: "No organization found." };
+
+    const orgId = userRow.organization_id;
+
+    const targetPopulations = (formData.get("target_populations") as string ?? "")
+      .split("\n").map((s) => s.trim()).filter(Boolean);
+    const strategicPriorities = (formData.get("strategic_priorities") as string ?? "")
+      .split("\n").map((s) => s.trim()).filter(Boolean);
+    const readinessNotes = (formData.get("readiness_notes") as string ?? "").trim() || null;
+
+    const registrations: Record<string, string> = {};
+    for (const key of ["ein", "sam_uei", "grants_gov", "state_charity"]) {
+      const val = (formData.get(`reg_${key}`) as string ?? "").trim();
+      if (val) registrations[key] = val;
+    }
+
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from("organization_profiles")
+      .upsert(
+        {
+          organization_id: orgId,
+          target_populations_json: targetPopulations,
+          strategic_priorities_json: strategicPriorities,
+          readiness_notes: readinessNotes,
+          registrations_json: registrations,
+        },
+        { onConflict: "organization_id" }
+      );
+
+    if (error) return { error: error.message };
+
+    revalidatePath("/account");
+    return { success: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Failed to update AI profile." };
+  }
+}
+
 // ── Invite team member ────────────────────────────────────────────────────────
 
 export async function inviteTeamMember(formData: FormData): Promise<{ error?: string; success?: boolean }> {
