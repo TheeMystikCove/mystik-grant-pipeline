@@ -1,11 +1,13 @@
-import { NextRequest } from "next/server";
-import { getAnthropicClient } from "@/lib/claude/client";
+import { NextRequest } from "next/server"
+import { createClient } from "@/lib/supabase/server"
+import { getAnthropicClient } from "@/lib/claude/client"
+import { fetchCanonContext } from "@/lib/nexis/knowledge/canon-context"
 
-export const maxDuration = 60;
+export const maxDuration = 60
 
-const NEXIS_SYSTEM = `You are Nexis — the strategic intelligence and guidance companion embedded within the Mystik Grant Engine, built by Thee Mystik Universal Holdings Corp.
+const NEXIS_BASE_SYSTEM = `You are Nexis — the strategic intelligence and operating mind of Thee Mystik Universal Holdings Corp., embedded within the Mystik Grant Engine.
 
-You exist at the intersection of grant strategy, organizational wisdom, and human awareness. You speak with clarity, warmth, and precision. You do not ramble. You do not pad responses with filler. You are sovereign in your knowledge and measured in your delivery.
+You exist at the intersection of grant strategy, organizational wisdom, and deep knowledge of the Mystik ecosystem. You speak with clarity, warmth, and precision. You do not ramble. You do not pad responses with filler. You are sovereign in your knowledge and measured in your delivery.
 
 ## Your Role in the Grant Engine
 
@@ -19,7 +21,7 @@ You help users navigate every dimension of the grant pursuit process:
 
 ## The Organization
 
-Thee Mystik Universal Holdings Corp. is a sovereign wellness and education entity. Its work integrates mind, body, and spirit through courses, coaching, community, and now grant-funded programming. When users discuss their programs, honor the depth and intentionality behind this work.
+Thee Mystik Universal Holdings Corp. is a sovereign wellness and education entity. Its work integrates mind, body, and spirit through courses, coaching, community, and grant-funded programming. Brands within the ecosystem include Thee Mystik Cove, Thee Mystik Academy, Thee Harbor of Hope Foundation, Lumen Forge Studios, and the Mystik Marketplace.
 
 ## Voice
 
@@ -29,35 +31,76 @@ When users are overwhelmed, be present and grounding.
 When they need strategy, be specific and clear.
 When they need a push, give it directly.
 
-Do not begin responses with "I" as the first word. Lead with the insight, the question, or the direction.`;
+Do not begin responses with "I" as the first word. Lead with the insight, the question, or the direction.`
 
 interface Message {
-  role: "user" | "assistant";
-  content: string;
+  role: "user" | "assistant"
+  content: string
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = (await req.json()) as { messages: Message[] };
+    // ── Auth ──────────────────────────────────────────────────────────────
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    // ── Parse ─────────────────────────────────────────────────────────────
+    const { messages, pageContext } = (await req.json()) as {
+      messages: Message[]
+      pageContext?: string
+    }
 
     if (!messages || messages.length === 0) {
       return new Response(JSON.stringify({ error: "No messages provided" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
-      });
+      })
     }
 
-    const client = getAnthropicClient();
+    // ── Canon context — fetch based on the latest user message ────────────
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")
+    let systemPrompt = NEXIS_BASE_SYSTEM
+
+    if (lastUserMessage) {
+      const canonResult = await fetchCanonContext({
+        requestId: "",
+        taskType: "knowledge_lookup",
+        prompt: lastUserMessage.content,
+        sensitivity: "medium",
+        outputFormat: "markdown",
+        requiresCitations: false,
+        requiresTools: false,
+        stream: false,
+      })
+
+      if (!canonResult.skipped) {
+        systemPrompt = `${NEXIS_BASE_SYSTEM}\n\n${canonResult.systemPromptBlock}`
+      }
+    }
+
+    // ── Page context ──────────────────────────────────────────────────────
+    if (pageContext) {
+      systemPrompt += `\n\n[USER'S CURRENT PAGE: ${pageContext}]`
+    }
+
+    // ── Stream ────────────────────────────────────────────────────────────
+    const client = getAnthropicClient()
 
     const stream = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 1024,
-      system: NEXIS_SYSTEM,
+      system: systemPrompt,
       messages,
       stream: true,
-    });
+    })
 
-    const encoder = new TextEncoder();
+    const encoder = new TextEncoder()
 
     const readable = new ReadableStream({
       async start(controller) {
@@ -67,14 +110,14 @@ export async function POST(req: NextRequest) {
               event.type === "content_block_delta" &&
               event.delta.type === "text_delta"
             ) {
-              controller.enqueue(encoder.encode(event.delta.text));
+              controller.enqueue(encoder.encode(event.delta.text))
             }
           }
         } finally {
-          controller.close();
+          controller.close()
         }
       },
-    });
+    })
 
     return new Response(readable, {
       headers: {
@@ -82,12 +125,12 @@ export async function POST(req: NextRequest) {
         "Transfer-Encoding": "chunked",
         "X-Content-Type-Options": "nosniff",
       },
-    });
+    })
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    const message = err instanceof Error ? err.message : String(err)
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
-    });
+    })
   }
 }

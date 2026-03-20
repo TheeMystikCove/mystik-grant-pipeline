@@ -9,6 +9,37 @@ const NAV = [
   { href: "/calendar", label: "Calendar", icon: "◷" },
 ];
 
+const OS_NAV = [
+  { href: "/os/canon", label: "Canon Registry", icon: "◆" },
+  { href: "/os/ai-console", label: "AI Console", icon: "◉" },
+];
+
+function NavLink({ href, icon, label }: { href: string; icon: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.625rem",
+        padding: "0.5625rem 0.75rem",
+        borderRadius: "2px",
+        fontSize: "0.8125rem",
+        fontFamily: "Inter, system-ui, sans-serif",
+        color: "var(--text-secondary)",
+        textDecoration: "none",
+        letterSpacing: "0.01em",
+        transition: "background 0.1s, color 0.1s",
+      }}
+    >
+      <span style={{ fontSize: "11px", color: "var(--accent)", opacity: 0.7, flexShrink: 0, width: "14px", textAlign: "center" }}>
+        {icon}
+      </span>
+      {label}
+    </Link>
+  );
+}
+
 async function getCurrentUser() {
   const supabase = await createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -139,37 +170,23 @@ export async function Sidebar() {
         }}
       >
         {NAV.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.625rem",
-              padding: "0.5625rem 0.75rem",
-              borderRadius: "2px",
-              fontSize: "0.8125rem",
-              fontFamily: "Inter, system-ui, sans-serif",
-              color: "var(--text-secondary)",
-              textDecoration: "none",
-              letterSpacing: "0.01em",
-              transition: "background 0.1s, color 0.1s",
-            }}
-          >
-            <span
-              style={{
-                fontSize: "11px",
-                color: "var(--accent)",
-                opacity: 0.7,
-                flexShrink: 0,
-                width: "14px",
-                textAlign: "center",
-              }}
-            >
-              {item.icon}
-            </span>
-            {item.label}
-          </Link>
+          <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} />
+        ))}
+
+        {/* OS section */}
+        <div style={{ marginTop: "1.25rem", marginBottom: "0.375rem", padding: "0 0.75rem" }}>
+          <span style={{
+            fontSize: "0.5rem",
+            color: "var(--text-faint)",
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            fontFamily: "Inter, system-ui, sans-serif",
+          }}>
+            NEXIS OS
+          </span>
+        </div>
+        {OS_NAV.map((item) => (
+          <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} />
         ))}
       </nav>
 

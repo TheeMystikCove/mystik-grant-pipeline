@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useTransition } from "react";
+import { usePathname } from "next/navigation";
 
 interface Message {
   role: "user" | "assistant";
@@ -21,6 +22,7 @@ export function NexisPanel() {
   const [, startTransition] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const pathname = usePathname();
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -50,7 +52,7 @@ export function NexisPanel() {
       const res = await fetch("/api/nexis/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ messages: newMessages, pageContext: pathname }),
       });
 
       if (!res.ok || !res.body) {
@@ -218,7 +220,7 @@ export function NexisPanel() {
                 marginLeft: "auto",
                 display: "flex",
                 alignItems: "center",
-                gap: "0.375rem",
+                gap: "0.625rem",
               }}
             >
               <span
@@ -241,6 +243,26 @@ export function NexisPanel() {
               >
                 {streaming ? "thinking" : "ready"}
               </span>
+              <button
+                onClick={() => setMessages([WELCOME])}
+                disabled={streaming}
+                title="Clear conversation"
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: streaming ? "not-allowed" : "pointer",
+                  padding: "2px 4px",
+                  fontSize: "0.5625rem",
+                  color: "var(--text-faint)",
+                  letterSpacing: "0.07em",
+                  textTransform: "uppercase",
+                  fontFamily: "Inter, system-ui, sans-serif",
+                  opacity: streaming ? 0.4 : 1,
+                  transition: "color 0.15s",
+                }}
+              >
+                Clear
+              </button>
             </div>
           </div>
 
