@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-
-// ── Types (local mirrors of canon-types to avoid package import in Next.js) ──
+import { Topbar } from "@/components/layout/topbar"
 
 type CanonTier = "TIER_0" | "TIER_1" | "TIER_2" | "TIER_3"
 type CanonDomain = "CORE" | "ACADEMY" | "HARBOR" | "STUDIOS" | "MARKET" | "OPS" | "NEXIS"
@@ -31,51 +30,45 @@ interface CanonDoc {
   updatedAt: string
 }
 
-// ── Colors ───────────────────────────────────────────────────────────────────
+const TIER_LABELS: Record<CanonTier, string> = {
+  TIER_0: "T0 · Primordial",
+  TIER_1: "T1 · Framework",
+  TIER_2: "T2 · Canon",
+  TIER_3: "T3 · Operational",
+}
 
 const TIER_COLORS: Record<CanonTier, string> = {
-  TIER_0: "bg-purple-900 text-purple-100",
-  TIER_1: "bg-indigo-800 text-indigo-100",
-  TIER_2: "bg-slate-700 text-slate-100",
-  TIER_3: "bg-slate-600 text-slate-200",
+  TIER_0: "var(--accent)",
+  TIER_1: "var(--info)",
+  TIER_2: "var(--success)",
+  TIER_3: "var(--text-muted)",
 }
 
 const STATUS_COLORS: Record<CanonStatus, string> = {
-  ACTIVE: "bg-emerald-900 text-emerald-200",
-  DRAFT: "bg-yellow-900 text-yellow-200",
-  ARCHIVED: "bg-slate-800 text-slate-400",
-  NEEDS_REVIEW: "bg-red-900 text-red-200",
+  ACTIVE: "var(--success)",
+  DRAFT: "var(--warning)",
+  ARCHIVED: "var(--text-faint)",
+  NEEDS_REVIEW: "var(--danger)",
 }
 
-const TIER_LABELS: Record<CanonTier, string> = {
-  TIER_0: "T0 — Primordial",
-  TIER_1: "T1 — Framework",
-  TIER_2: "T2 — Canon",
-  TIER_3: "T3 — Operational",
-}
-
-// ── Main Page ─────────────────────────────────────────────────────────────────
-
-export default function CanonAdminPage() {
+export default function CanonRegistryPage() {
   const [docs, setDocs] = useState<CanonDoc[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filterTier, setFilterTier] = useState<CanonTier | "ALL">("ALL")
   const [filterDomain, setFilterDomain] = useState<CanonDomain | "ALL">("ALL")
   const [filterStatus, setFilterStatus] = useState<CanonStatus | "ALL">("ALL")
-  const [searchQuery, setSearchQuery] = useState("")
+  const [search, setSearch] = useState("")
   const [selected, setSelected] = useState<CanonDoc | null>(null)
 
-  useEffect(() => {
-    fetchDocs()
-  }, [])
+  useEffect(() => { fetchDocs() }, [])
 
   async function fetchDocs() {
     setLoading(true)
     setError(null)
     try {
       const res = await fetch("/api/os/canon")
-      if (!res.ok) throw new Error(`Failed to fetch canon registry: ${res.status}`)
+      if (!res.ok) throw new Error(`${res.status}`)
       const data = await res.json()
       setDocs(data.docs ?? [])
     } catch (err) {
@@ -89,12 +82,11 @@ export default function CanonAdminPage() {
     if (filterTier !== "ALL" && d.tier !== filterTier) return false
     if (filterDomain !== "ALL" && d.domain !== filterDomain) return false
     if (filterStatus !== "ALL" && d.status !== filterStatus) return false
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
+    if (search) {
+      const q = search.toLowerCase()
       return (
         d.title.toLowerCase().includes(q) ||
         d.slug.includes(q) ||
-        d.category.includes(q) ||
         d.tags.some((t) => t.includes(q))
       )
     }
@@ -106,244 +98,293 @@ export default function CanonAdminPage() {
     active: docs.filter((d) => d.status === "ACTIVE").length,
     processed: docs.filter((d) => d.processed).length,
     needsReview: docs.filter((d) => d.status === "NEEDS_REVIEW").length,
-    totalChunks: docs.reduce((sum, d) => sum + (d.chunkCount ?? 0), 0),
+    totalChunks: docs.reduce((s, d) => s + (d.chunkCount ?? 0), 0),
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center text-sm font-bold">
-            K
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">Canon Knowledge Registry</h1>
-        </div>
-        <p className="text-slate-400 text-sm">
-          NEXIS AI.OS — Active canon documents, processing status, and chunk counts
-        </p>
-      </div>
+    <>
+      <Topbar title="Canon Registry" subtitle="NEXIS Knowledge Layer" />
 
-      {/* Stats bar */}
-      <div className="grid grid-cols-5 gap-3 mb-6">
-        {[
-          { label: "Total Docs", value: stats.total },
-          { label: "Active", value: stats.active },
-          { label: "Processed", value: stats.processed },
-          { label: "Needs Review", value: stats.needsReview },
-          { label: "Total Chunks", value: stats.totalChunks.toLocaleString() },
-        ].map((s) => (
-          <div key={s.label} className="bg-slate-900 border border-slate-800 rounded-lg p-3">
-            <div className="text-2xl font-bold text-white">{s.value}</div>
-            <div className="text-xs text-slate-500 mt-1">{s.label}</div>
-          </div>
-        ))}
-      </div>
+      <main style={{ flex: 1, padding: "1.75rem", overflowY: "auto", display: "flex", flexDirection: "column", gap: "1.5rem" }}>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-5">
-        <input
-          type="text"
-          placeholder="Search title, slug, tag..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 w-64"
-        />
-
-        <select
-          value={filterTier}
-          onChange={(e) => setFilterTier(e.target.value as CanonTier | "ALL")}
-          className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
-        >
-          <option value="ALL">All Tiers</option>
-          {(["TIER_0", "TIER_1", "TIER_2", "TIER_3"] as CanonTier[]).map((t) => (
-            <option key={t} value={t}>{TIER_LABELS[t]}</option>
-          ))}
-        </select>
-
-        <select
-          value={filterDomain}
-          onChange={(e) => setFilterDomain(e.target.value as CanonDomain | "ALL")}
-          className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
-        >
-          <option value="ALL">All Domains</option>
-          {(["CORE", "ACADEMY", "HARBOR", "STUDIOS", "MARKET", "OPS", "NEXIS"] as CanonDomain[]).map((d) => (
-            <option key={d} value={d}>{d}</option>
-          ))}
-        </select>
-
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value as CanonStatus | "ALL")}
-          className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white"
-        >
-          <option value="ALL">All Statuses</option>
-          {(["ACTIVE", "DRAFT", "NEEDS_REVIEW", "ARCHIVED"] as CanonStatus[]).map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-
-        <button
-          onClick={fetchDocs}
-          className="bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-4 py-2 text-sm text-white ml-auto"
-        >
-          Refresh
-        </button>
-      </div>
-
-      {error && (
-        <div className="bg-red-950 border border-red-800 rounded-lg p-4 mb-4 text-red-300 text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* Layout: table + detail panel */}
-      <div className="flex gap-4">
-        {/* Table */}
-        <div className="flex-1 min-w-0">
-          {loading ? (
-            <div className="text-slate-500 text-sm py-8 text-center">Loading registry...</div>
-          ) : filtered.length === 0 ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-lg p-8 text-center">
-              <div className="text-slate-400 text-sm mb-2">No canon documents found</div>
-              <div className="text-slate-600 text-xs">
-                Run <code className="bg-slate-800 px-1 rounded">npm run canon:ingest</code> to ingest PDFs from the knowledge/canon/ folders
-              </div>
+        {/* Stat cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "1rem" }}>
+          {[
+            { label: "Total Documents", value: stats.total, icon: "◎", color: "var(--info)" },
+            { label: "Active", value: stats.active, icon: "◆", color: "var(--success)" },
+            { label: "Processed", value: stats.processed, icon: "◈", color: "var(--accent)" },
+            { label: "Needs Review", value: stats.needsReview, icon: "◇", color: stats.needsReview > 0 ? "var(--danger)" : "var(--text-faint)" },
+            { label: "Total Chunks", value: stats.totalChunks, icon: "◉", color: "var(--text-secondary)" },
+          ].map((s) => (
+            <div
+              key={s.label}
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderTop: "1px solid var(--border-accent)",
+                borderRadius: "2px",
+                padding: "1.125rem 1.375rem",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              <span aria-hidden style={{ position: "absolute", top: "0.625rem", right: "0.75rem", fontSize: "0.4375rem", color: s.color, opacity: 0.3, letterSpacing: "0.1em" }}>
+                {s.icon}
+              </span>
+              <p style={{ fontSize: "0.5625rem", color: "var(--text-muted)", marginBottom: "0.5rem", letterSpacing: "0.09em", textTransform: "uppercase", fontFamily: "Inter, system-ui, sans-serif" }}>
+                {s.label}
+              </p>
+              <p style={{ fontFamily: "Georgia, serif", fontSize: "1.75rem", fontWeight: 700, color: s.color, lineHeight: 1 }}>
+                {s.value}
+              </p>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {filtered.map((doc) => (
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div style={{ display: "flex", gap: "0.625rem", alignItems: "center", flexWrap: "wrap" }}>
+          <input
+            type="text"
+            placeholder="Search title, slug, tag…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={filterInputStyle}
+          />
+          <select value={filterTier} onChange={(e) => setFilterTier(e.target.value as CanonTier | "ALL")} style={filterInputStyle}>
+            <option value="ALL">All Tiers</option>
+            {(["TIER_0", "TIER_1", "TIER_2", "TIER_3"] as CanonTier[]).map((t) => (
+              <option key={t} value={t}>{TIER_LABELS[t]}</option>
+            ))}
+          </select>
+          <select value={filterDomain} onChange={(e) => setFilterDomain(e.target.value as CanonDomain | "ALL")} style={filterInputStyle}>
+            <option value="ALL">All Domains</option>
+            {(["CORE","ACADEMY","HARBOR","STUDIOS","MARKET","OPS","NEXIS"] as CanonDomain[]).map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as CanonStatus | "ALL")} style={filterInputStyle}>
+            <option value="ALL">All Statuses</option>
+            {(["ACTIVE","DRAFT","NEEDS_REVIEW","ARCHIVED"] as CanonStatus[]).map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+          <button onClick={fetchDocs} style={{ ...filterInputStyle, cursor: "pointer", color: "var(--accent)", borderColor: "var(--border-accent)", background: "var(--surface-accent)" }}>
+            Refresh
+          </button>
+        </div>
+
+        {error && (
+          <div style={{ padding: "0.75rem 1rem", background: "var(--danger-surface, #2d0f0f)", border: "1px solid var(--danger)", borderRadius: "2px", color: "var(--danger)", fontSize: "0.8125rem", fontFamily: "Inter, system-ui, sans-serif" }}>
+            Error: {error}
+          </div>
+        )}
+
+        {/* Main layout */}
+        <div style={{ display: "flex", gap: "1.25rem", alignItems: "flex-start" }}>
+
+          {/* Document list */}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {loading ? (
+              <p style={{ color: "var(--text-faint)", fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: "0.875rem", padding: "2rem 0" }}>
+                Loading registry…
+              </p>
+            ) : filtered.length === 0 ? (
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderTop: "1px solid var(--border-accent)", borderRadius: "2px", padding: "2.5rem 1.375rem", textAlign: "center" }}>
+                <p style={{ color: "var(--text-faint)", fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: "0.875rem", marginBottom: "0.75rem" }}>
+                  No canon documents found.
+                </p>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.6875rem", fontFamily: "Inter, system-ui, sans-serif", letterSpacing: "0.02em" }}>
+                  Drop PDFs into <code style={{ background: "var(--surface-raised)", padding: "0 4px" }}>knowledge/canon/</code> and run <code style={{ background: "var(--surface-raised)", padding: "0 4px" }}>npm run canon:ingest</code>
+                </p>
+              </div>
+            ) : (
+              filtered.map((doc) => (
                 <div
                   key={doc.id}
                   onClick={() => setSelected(selected?.id === doc.id ? null : doc)}
-                  className={`bg-slate-900 border rounded-lg p-4 cursor-pointer transition-colors ${
-                    selected?.id === doc.id
-                      ? "border-purple-600"
-                      : "border-slate-800 hover:border-slate-600"
-                  }`}
+                  style={{
+                    background: "var(--surface)",
+                    border: `1px solid ${selected?.id === doc.id ? "var(--border-accent)" : "var(--border)"}`,
+                    borderTop: `1px solid ${selected?.id === doc.id ? "var(--accent)" : "var(--border-accent)"}`,
+                    borderRadius: "2px",
+                    padding: "0.875rem 1.375rem",
+                    cursor: "pointer",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: "1rem",
+                    transition: "border-color 0.12s",
+                  }}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${TIER_COLORS[doc.tier]}`}>
-                          {doc.tier}
-                        </span>
-                        <span className="text-xs text-slate-500 font-mono">{doc.domain}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[doc.status]}`}>
-                          {doc.status}
-                        </span>
-                        {!doc.processed && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-orange-950 text-orange-300">
-                            NOT PROCESSED
-                          </span>
-                        )}
-                      </div>
-                      <div className="font-medium text-white truncate">{doc.title}</div>
-                      <div className="text-xs text-slate-500 font-mono mt-0.5">{doc.slug}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    {/* Badges row */}
+                    <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.375rem", flexWrap: "wrap" }}>
+                      <Chip label={TIER_LABELS[doc.tier]} color={TIER_COLORS[doc.tier]} />
+                      <Chip label={doc.domain} color="var(--text-secondary)" />
+                      <Chip label={doc.status} color={STATUS_COLORS[doc.status]} />
+                      {!doc.processed && <Chip label="NOT PROCESSED" color="var(--warning)" />}
                     </div>
 
-                    <div className="text-right shrink-0">
-                      <div className="text-lg font-bold text-white">
-                        {doc.chunkCount ?? 0}
+                    <p style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "0.125rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {doc.title}
+                    </p>
+                    <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "Inter, system-ui, sans-serif", fontVariantNumeric: "tabular-nums" }}>
+                      {doc.slug}
+                    </p>
+
+                    {doc.tags.length > 0 && (
+                      <div style={{ display: "flex", gap: "0.375rem", marginTop: "0.5rem", flexWrap: "wrap" }}>
+                        {doc.tags.map((tag) => (
+                          <span key={tag} style={{ fontSize: "0.5625rem", color: "var(--text-faint)", background: "var(--surface-raised)", border: "1px solid var(--border-muted)", borderRadius: "2px", padding: "1px 6px", letterSpacing: "0.04em", fontFamily: "Inter, system-ui, sans-serif" }}>
+                            {tag}
+                          </span>
+                        ))}
                       </div>
-                      <div className="text-xs text-slate-500">chunks</div>
-                      <div className="text-xs text-slate-600 mt-1">
-                        w: {doc.authorityWeight}
-                      </div>
-                    </div>
+                    )}
                   </div>
 
-                  {doc.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {doc.tags.map((tag) => (
-                        <span key={tag} className="text-xs bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">
-                          {tag}
-                        </span>
-                      ))}
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <p style={{ fontFamily: "Georgia, serif", fontSize: "1.5rem", fontWeight: 700, color: "var(--accent)", lineHeight: 1 }}>
+                      {doc.chunkCount ?? 0}
+                    </p>
+                    <p style={{ fontSize: "0.5625rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginTop: "2px", fontFamily: "Inter, system-ui, sans-serif" }}>
+                      chunks
+                    </p>
+                    <p style={{ fontSize: "0.5625rem", color: "var(--text-faint)", marginTop: "4px", fontFamily: "Inter, system-ui, sans-serif" }}>
+                      w:{doc.authorityWeight}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Detail panel */}
+          {selected && (
+            <div style={{ width: "280px", flexShrink: 0, position: "sticky", top: "1.75rem" }}>
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border-accent)", borderTop: "1px solid var(--accent)", borderRadius: "2px", padding: "1.125rem 1.375rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                  <h2 style={{ fontFamily: "Georgia, serif", fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                    Document Details
+                  </h2>
+                  <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "0.75rem", padding: 0 }}>
+                    ✕
+                  </button>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.625rem" }}>
+                  <DetailField label="Title" value={selected.title} />
+                  <DetailField label="Slug" value={selected.slug} mono />
+                  <DetailField label="Tier" value={selected.tier} />
+                  <DetailField label="Domain" value={selected.domain} />
+                  <DetailField label="Category" value={selected.category} />
+                  <DetailField label="Status" value={selected.status} />
+                  <DetailField label="Version" value={selected.version} />
+                  <DetailField label="Sensitivity" value={selected.sensitivity} />
+                  <DetailField label="Visibility" value={selected.visibility} />
+                  <DetailField label="Authority Weight" value={String(selected.authorityWeight)} />
+                  <DetailField label="Chunks" value={String(selected.chunkCount ?? 0)} />
+                  <DetailField label="Processed" value={selected.processed ? "Yes" : "No"} />
+                  <DetailField label="File" value={selected.fileName} mono />
+                  {selected.description && (
+                    <div>
+                      <p style={detailLabelStyle}>Description</p>
+                      <p style={{ ...detailValueStyle, lineHeight: 1.5 }}>{selected.description}</p>
                     </div>
                   )}
+                  {selected.reviewNotes && (
+                    <div>
+                      <p style={{ ...detailLabelStyle, color: "var(--warning)" }}>Review Notes</p>
+                      <p style={{ ...detailValueStyle, color: "var(--warning)", lineHeight: 1.5 }}>{selected.reviewNotes}</p>
+                    </div>
+                  )}
+                  <div style={{ paddingTop: "0.625rem", borderTop: "1px solid var(--border-muted)" }}>
+                    <p style={detailLabelStyle}>Updated</p>
+                    <p style={detailValueStyle}>{new Date(selected.updatedAt).toLocaleString()}</p>
+                  </div>
                 </div>
-              ))}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Detail panel */}
-        {selected && (
-          <div className="w-80 shrink-0">
-            <div className="bg-slate-900 border border-purple-800 rounded-lg p-4 sticky top-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold text-white text-sm">Document Details</h2>
-                <button
-                  onClick={() => setSelected(null)}
-                  className="text-slate-500 hover:text-white text-xs"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="space-y-3 text-sm">
-                <Field label="ID" value={selected.id} mono />
-                <Field label="Title" value={selected.title} />
-                <Field label="Slug" value={selected.slug} mono />
-                <Field label="Tier" value={selected.tier} />
-                <Field label="Domain" value={selected.domain} />
-                <Field label="Category" value={selected.category} />
-                <Field label="Status" value={selected.status} />
-                <Field label="Version" value={selected.version} />
-                <Field label="Sensitivity" value={selected.sensitivity} />
-                <Field label="Visibility" value={selected.visibility} />
-                <Field label="Authority Weight" value={String(selected.authorityWeight)} />
-                <Field label="Chunks" value={String(selected.chunkCount ?? 0)} />
-                <Field label="Processed" value={selected.processed ? "Yes" : "No"} />
-                <Field label="File" value={selected.fileName} mono />
-                {selected.description && (
-                  <div>
-                    <div className="text-slate-500 text-xs mb-1">Description</div>
-                    <div className="text-slate-300 text-xs leading-relaxed">{selected.description}</div>
-                  </div>
-                )}
-                {selected.reviewNotes && (
-                  <div>
-                    <div className="text-orange-400 text-xs mb-1">Review Notes</div>
-                    <div className="text-orange-300 text-xs leading-relaxed">{selected.reviewNotes}</div>
-                  </div>
-                )}
-                <div className="pt-2 border-t border-slate-800">
-                  <div className="text-slate-500 text-xs">Updated</div>
-                  <div className="text-slate-400 text-xs">
-                    {new Date(selected.updatedAt).toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Ingestion guide */}
-      <div className="mt-8 bg-slate-900 border border-slate-800 rounded-lg p-4">
-        <div className="text-slate-400 text-xs font-medium mb-2">How to ingest canon PDFs</div>
-        <div className="text-slate-600 text-xs space-y-1">
-          <div>1. Drop PDF files into the appropriate tier folder in <code className="bg-slate-800 px-1 rounded">NEXIS_AI_CORE/knowledge/canon/</code></div>
-          <div>2. Run <code className="bg-slate-800 px-1 rounded">npm run canon:ingest</code> from NEXIS_AI_CORE</div>
-          <div>3. Refresh this page to see updated registry</div>
-          <div className="pt-1 text-slate-700">
-            Priority folders: tier-1-frameworks/ (Magik System) → tier-2-canons/ (Academy Canon, Spiritual Gifts)
+        {/* Ingestion guide */}
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderTop: "1px solid var(--border-accent)", borderRadius: "2px", padding: "1.125rem 1.375rem" }}>
+          <p style={{ fontSize: "0.5625rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.09em", fontFamily: "Inter, system-ui, sans-serif", marginBottom: "0.5rem" }}>
+            Ingestion Guide
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+            {[
+              "1. Drop PDF files into the correct tier folder in NEXIS_AI_CORE/knowledge/canon/",
+              "2. Run npm run canon:ingest from NEXIS_AI_CORE",
+              "3. Refresh this page to see the updated registry",
+            ].map((step) => (
+              <p key={step} style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "Inter, system-ui, sans-serif", lineHeight: 1.5 }}>
+                {step}
+              </p>
+            ))}
           </div>
         </div>
-      </div>
+
+      </main>
+    </>
+  )
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function Chip({ label, color }: { label: string; color: string }) {
+  return (
+    <span style={{
+      display: "inline-block",
+      padding: "1px 6px",
+      borderRadius: "2px",
+      fontSize: "0.5625rem",
+      fontWeight: 700,
+      background: `${color}18`,
+      border: `1px solid ${color}40`,
+      color,
+      textTransform: "uppercase",
+      letterSpacing: "0.07em",
+      fontFamily: "Inter, system-ui, sans-serif",
+    }}>
+      {label}
+    </span>
+  )
+}
+
+function DetailField({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div>
+      <p style={detailLabelStyle}>{label}</p>
+      <p style={{ ...detailValueStyle, fontFamily: mono ? "monospace" : "Inter, system-ui, sans-serif", wordBreak: "break-all" }}>{value}</p>
     </div>
   )
 }
 
-function Field({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div>
-      <div className="text-slate-500 text-xs">{label}</div>
-      <div className={`text-slate-300 text-xs mt-0.5 break-all ${mono ? "font-mono" : ""}`}>
-        {value}
-      </div>
-    </div>
-  )
+// ── Styles ────────────────────────────────────────────────────────────────────
+
+const filterInputStyle: React.CSSProperties = {
+  padding: "0.4375rem 0.75rem",
+  background: "var(--surface)",
+  border: "1px solid var(--border)",
+  borderRadius: "2px",
+  color: "var(--text-primary)",
+  fontSize: "0.75rem",
+  fontFamily: "Inter, system-ui, sans-serif",
+}
+
+const detailLabelStyle: React.CSSProperties = {
+  fontSize: "0.5625rem",
+  color: "var(--text-muted)",
+  textTransform: "uppercase",
+  letterSpacing: "0.07em",
+  fontFamily: "Inter, system-ui, sans-serif",
+  marginBottom: "2px",
+}
+
+const detailValueStyle: React.CSSProperties = {
+  fontSize: "0.75rem",
+  color: "var(--text-secondary)",
+  fontFamily: "Inter, system-ui, sans-serif",
 }
