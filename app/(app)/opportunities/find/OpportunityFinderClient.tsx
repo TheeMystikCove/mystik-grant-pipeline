@@ -89,6 +89,7 @@ export function OpportunityFinderClient({ organizationId }: Props) {
         );
         setScoresReady(true);
         setScoresLoading(false);
+        setSortBy("score"); // auto-sort by Best Match once scores arrive
         return;
       } catch { /* keep polling */ }
     }
