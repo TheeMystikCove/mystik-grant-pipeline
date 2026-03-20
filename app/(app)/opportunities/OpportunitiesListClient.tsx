@@ -74,20 +74,21 @@ export function OpportunitiesListClient({ opportunities }: Props) {
 
   async function handleRescore() {
     setRescoring(true);
-    setRescoreMsg(null);
+    setRescoreMsg("Scoring in progress…");
     try {
       const res = await fetch("/api/opportunities/rescore", { method: "POST" });
       const data = await res.json();
-      if (data.queued === 0) {
-        setRescoreMsg("All opportunities already have scores.");
+      setRescoreMsg(data.message ?? `Scored ${data.scored} opportunities.`);
+      router.refresh();
+      if (data.remaining > 0) {
+        // More to score — keep button active so user can click again
         setRescoring(false);
-        return;
+      } else {
+        setRescoring(false);
+        setTimeout(() => setRescoreMsg(null), 4_000);
       }
-      setRescoreMsg(`Scoring ${data.queued} opportunities… refresh in ~30s to see scores.`);
-      // Auto-refresh after 35s to pick up completed scores
-      setTimeout(() => { router.refresh(); setRescoring(false); setRescoreMsg(null); }, 35_000);
     } catch {
-      setRescoreMsg("Rescore failed. Try again.");
+      setRescoreMsg("Scoring failed. Try again.");
       setRescoring(false);
     }
   }
