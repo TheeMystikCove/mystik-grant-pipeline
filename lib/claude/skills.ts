@@ -3,7 +3,7 @@ import path from "path";
 
 const rawSkillsDir = (
   process.env.SKILLS_DIR ??
-  path.resolve(process.cwd(), "../Mystik Grant Pipeline/skills")
+  path.resolve(process.cwd(), "./skills")
 ).trim();
 
 // Resolve relative paths against cwd so "./skills" works on Vercel
