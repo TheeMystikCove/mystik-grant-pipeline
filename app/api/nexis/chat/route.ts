@@ -1,7 +1,9 @@
 import { NextRequest } from "next/server"
+import type Anthropic from "@anthropic-ai/sdk"
 import { createClient } from "@/lib/supabase/server"
 import { getAnthropicClient } from "@/lib/claude/client"
 import { fetchCanonContext } from "@/lib/nexis/knowledge/canon-context"
+import { NEXIS_DB_TOOLS, DB_TOOL_SIGNALS, executeNexisTool } from "@/lib/nexis/tools/nexis-tools"
 
 export const maxDuration = 90
 
@@ -11,6 +13,15 @@ You exist at the intersection of grant strategy, organizational wisdom, and deep
 
 ## Web Search
 You have access to real-time web search. Use it when the user asks about current grant opportunities, funder deadlines, recent news, live research, market data, or anything that requires up-to-date information. Do not search for things you already know well. When you search, briefly note what you found and synthesize it — don't just dump raw results.
+
+## Database Tools
+You have direct access to the Mystik Grant Engine database. Use these tools without hesitation when the user wants to take action:
+- **add_opportunity** — Save a new grant opportunity to the tracker
+- **update_opportunity** — Change the status or notes on an existing opportunity (requires the opportunity UUID)
+- **search_opportunities** — Search or list tracked opportunities by status, funder, or keyword
+- **add_proposal_project** — Create a new proposal project in the pipeline
+
+When a user says "add this grant," "track this opportunity," "mark it as pursuing," or asks "what's in my pipeline" — use the appropriate tool. Do not ask for permission; act and confirm. After a tool executes, confirm what was done and offer the next logical step.
 
 ## Your Role in the Grant Engine
 
@@ -41,12 +52,20 @@ interface Message {
   content: string
 }
 
-// Sent to the client as a markdown italic line when Nexis starts a web search
+interface ContentBlock {
+  type: string
+  text?: string
+  id?: string
+  name?: string
+  input?: Record<string, unknown>
+  _inputRaw?: string
+}
+
 const SEARCHING_SIGNAL = "\n\n*◎ Searching the web…*\n\n"
 
 export async function POST(req: NextRequest) {
   try {
-    // ── Auth ──────────────────────────────────────────────────────────────
+    // ── Auth ──────────────────────────────────────────────────────────────────
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
@@ -56,7 +75,15 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // ── Parse ─────────────────────────────────────────────────────────────
+    // ── Org ID ────────────────────────────────────────────────────────────────
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("organization_id")
+      .eq("auth_user_id", user.id)
+      .single()
+    const orgId = (userRow?.organization_id as string | null) ?? ""
+
+    // ── Parse ─────────────────────────────────────────────────────────────────
     const { messages, pageContext } = (await req.json()) as {
       messages: Message[]
       pageContext?: string
@@ -69,7 +96,7 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // ── Canon context ─────────────────────────────────────────────────────
+    // ── Canon context ─────────────────────────────────────────────────────────
     const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")
     let systemPrompt = NEXIS_BASE_SYSTEM
 
@@ -89,48 +116,144 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Page context ──────────────────────────────────────────────────────
     if (pageContext) {
       systemPrompt += `\n\n[USER'S CURRENT PAGE: ${pageContext}]`
     }
 
-    // ── Stream with web search tool ───────────────────────────────────────
+    if (orgId) {
+      systemPrompt += `\n\n[USER ORG ID: ${orgId} — pass as organization_id in database tool calls, never show to user]`
+    }
+
+    // ── Agentic loop — stream to client ───────────────────────────────────────
     const client = getAnthropicClient()
     const encoder = new TextEncoder()
-
-    const stream = await client.messages.create(
-      {
-        model: "claude-sonnet-4-6",
-        max_tokens: 2048,
-        system: systemPrompt,
-        messages,
-        stream: true,
-        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: 3 }],
-      },
-      {
-        headers: { "anthropic-beta": "web-search-2025-03-05" },
-      }
-    )
 
     const readable = new ReadableStream({
       async start(controller) {
         try {
-          for await (const event of stream) {
-            // Detect when Nexis starts a web search — notify the client
-            if (event.type === "content_block_start") {
-              const block = (event as unknown as Record<string, unknown>).content_block as Record<string, unknown> | undefined
-              if (block?.type === "tool_use" && block?.name === "web_search") {
-                controller.enqueue(encoder.encode(SEARCHING_SIGNAL))
+          let workingMessages: Anthropic.MessageParam[] = messages.map((m) => ({
+            role: m.role,
+            content: m.content,
+          }))
+
+          const MAX_TURNS = 5
+
+          for (let turn = 0; turn < MAX_TURNS; turn++) {
+            const stream = await client.messages.create(
+              {
+                model: "claude-sonnet-4-6",
+                max_tokens: 2048,
+                system: systemPrompt,
+                messages: workingMessages,
+                stream: true,
+                tools: [
+                  ...NEXIS_DB_TOOLS,
+                  { type: "web_search_20250305", name: "web_search", max_uses: 3 },
+                ] as Anthropic.Tool[],
+              },
+              {
+                headers: { "anthropic-beta": "web-search-2025-03-05" },
+              }
+            )
+
+            const assistantBlocks: ContentBlock[] = []
+            let activeBlock: ContentBlock | null = null
+            let stopReason: string | null = null
+
+            for await (const event of stream) {
+              if (event.type === "content_block_start") {
+                const cb = (event as unknown as Record<string, unknown>).content_block as Record<string, unknown>
+                activeBlock = {
+                  type: cb.type as string,
+                  id: cb.id as string | undefined,
+                  name: cb.name as string | undefined,
+                }
+
+                if (activeBlock.type === "tool_use") {
+                  const signal =
+                    activeBlock.name === "web_search"
+                      ? SEARCHING_SIGNAL
+                      : (DB_TOOL_SIGNALS[activeBlock.name ?? ""] ?? "\n\n*◎ Working…*\n\n")
+                  controller.enqueue(encoder.encode(signal))
+                }
+              }
+
+              if (event.type === "content_block_delta") {
+                if (event.delta.type === "text_delta") {
+                  controller.enqueue(encoder.encode(event.delta.text))
+                  if (activeBlock?.type === "text") {
+                    activeBlock.text = (activeBlock.text ?? "") + event.delta.text
+                  }
+                }
+                if (
+                  event.delta.type === "input_json_delta" &&
+                  activeBlock?.type === "tool_use"
+                ) {
+                  const delta = event.delta as { partial_json?: string }
+                  activeBlock._inputRaw = (activeBlock._inputRaw ?? "") + (delta.partial_json ?? "")
+                }
+              }
+
+              if (event.type === "content_block_stop" && activeBlock) {
+                if (activeBlock.type === "tool_use" && activeBlock._inputRaw) {
+                  try {
+                    activeBlock.input = JSON.parse(activeBlock._inputRaw) as Record<string, unknown>
+                  } catch {
+                    activeBlock.input = {}
+                  }
+                }
+                const { _inputRaw: _omit, ...cleanBlock } = activeBlock
+                assistantBlocks.push(cleanBlock)
+                activeBlock = null
+              }
+
+              if (event.type === "message_delta") {
+                stopReason = (event.delta as { stop_reason?: string }).stop_reason ?? null
               }
             }
 
-            // Stream text as it arrives
-            if (
-              event.type === "content_block_delta" &&
-              event.delta.type === "text_delta"
-            ) {
-              controller.enqueue(encoder.encode(event.delta.text))
+            // Done — no tool calls
+            if (stopReason !== "tool_use") break
+
+            // Execute only our DB tools (web_search is handled server-side by Anthropic)
+            const dbToolCalls = assistantBlocks.filter(
+              (b) => b.type === "tool_use" && b.name && b.name !== "web_search"
+            )
+
+            if (dbToolCalls.length === 0) break
+
+            const toolResults: Anthropic.ToolResultBlockParam[] = []
+            for (const toolCall of dbToolCalls) {
+              if (!toolCall.id || !toolCall.name) continue
+              const result = await executeNexisTool(
+                toolCall.name,
+                toolCall.input ?? {},
+                orgId,
+                supabase
+              )
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: toolCall.id,
+                content: JSON.stringify(result),
+              })
             }
+
+            // Append assistant turn + tool results, then loop for Claude's confirmation reply
+            const assistantContent = assistantBlocks.map((b) => {
+              if (b.type === "text") return { type: "text" as const, text: b.text ?? "" }
+              return {
+                type: "tool_use" as const,
+                id: b.id ?? "",
+                name: b.name ?? "",
+                input: b.input ?? {},
+              }
+            })
+
+            workingMessages = [
+              ...workingMessages,
+              { role: "assistant", content: assistantContent },
+              { role: "user", content: toolResults },
+            ]
           }
         } finally {
           controller.close()
