@@ -152,7 +152,7 @@ export interface User {
   created_at: string;
 }
 
-export type VerificationStatus = "unverified" | "source_verified" | "manually_reviewed";
+export type VerificationStatus = "unverified" | "source_verified" | "manually_reviewed" | "web_verified";
 
 export interface Opportunity {
   id: string;
