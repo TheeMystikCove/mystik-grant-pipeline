@@ -6,6 +6,16 @@ const BATCH_SIZE = 3;
 const MAX_PER_CALL = 15;
 
 export async function POST() {
+  try {
+    return await handleRescore();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[rescore] top-level crash:", msg);
+    return NextResponse.json({ scored: 0, message: `Server error: ${msg}`, error: msg });
+  }
+}
+
+async function handleRescore() {
   const supabase = createAdminClient();
 
   // Check existing scores
