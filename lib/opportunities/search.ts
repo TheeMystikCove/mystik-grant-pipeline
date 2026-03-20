@@ -193,7 +193,7 @@ export async function searchGrantOpportunities(
   const allRows = [...federalRows, ...webScoutRows, ...claudeRows];
   if (allRows.length === 0) return [];
 
-  // ── Deduplicate by (funder_name + name) before inserting ─────────────────
+  // ── Deduplicate within this batch by (funder_name + name) ────────────────
   const seen = new Set<string>();
   const dedupedRows = allRows.filter((row) => {
     const key = `${row.funder_name.toLowerCase()}||${row.name.toLowerCase()}`;
@@ -202,16 +202,36 @@ export async function searchGrantOpportunities(
     return true;
   });
 
-  const { data: saved, error } = await supabase
+  // ── Check which already exist in DB to preserve saved scores ─────────────
+  const { data: existing } = await supabase
     .from("opportunities")
-    .insert(dedupedRows)
-    .select();
+    .select("id, funder_name, name, program_area, funder_type, deadline, award_min, award_max, geography, source_url, eligibility_text, notes, status, verification_status, created_at")
+    .eq("organization_id", params.organizationId)
+    .in("name", dedupedRows.map((r) => r.name));
 
-  if (error) throw new Error(`Failed to save opportunities: ${error.message}`);
-  const savedOpps = (saved ?? []) as ScoutedOpportunity[];
+  const existingKeys = new Set(
+    (existing ?? []).map((r: { funder_name: string; name: string }) =>
+      `${r.funder_name.toLowerCase()}||${r.name.toLowerCase()}`
+    )
+  );
 
-  // ── Fire-and-forget: score + eligibility check + funder enrichment ───────
-  for (const opp of savedOpps) {
+  const newRows = dedupedRows.filter(
+    (r) => !existingKeys.has(`${r.funder_name.toLowerCase()}||${r.name.toLowerCase()}`)
+  );
+
+  // ── Insert only genuinely new opportunities ───────────────────────────────
+  let newOpps: ScoutedOpportunity[] = [];
+  if (newRows.length > 0) {
+    const { data: inserted, error } = await supabase
+      .from("opportunities")
+      .insert(newRows)
+      .select();
+    if (error) throw new Error(`Failed to save opportunities: ${error.message}`);
+    newOpps = (inserted ?? []) as ScoutedOpportunity[];
+  }
+
+  // ── Fire-and-forget: score + eligibility check + funder enrichment (new only)
+  for (const opp of newOpps) {
     runScoringForOpportunity(opp.id, opp, params.organizationId).catch((err) =>
       console.error("[search] scoring error for", opp.id, err)
     );
@@ -220,7 +240,9 @@ export async function searchGrantOpportunities(
     );
   }
 
-  return savedOpps;
+  // Return new + existing so the UI shows all results with saved scores intact
+  const existingOpps = (existing ?? []) as ScoutedOpportunity[];
+  return [...newOpps, ...existingOpps];
 }
 
 // ─── Fire-and-forget scoring ──────────────────────────────────────────────────
