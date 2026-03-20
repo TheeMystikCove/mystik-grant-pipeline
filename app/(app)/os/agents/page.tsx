@@ -239,7 +239,7 @@ export default function AgentsPage() {
                   </div>
 
                   {/* Output */}
-                  <MarkdownOutput content={result.output || "(empty response)"} />
+                  <MarkdownOutput label="Output" content={result.output || "(empty response)"} />
                 </div>
               )}
             </>

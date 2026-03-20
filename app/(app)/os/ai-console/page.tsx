@@ -233,7 +233,7 @@ export default function AIConsolePage() {
             </div>
 
             {/* Output */}
-            <MarkdownOutput content={response.output || "(empty response)"} />
+            <MarkdownOutput label="Output" content={response.output || "(empty response)"} />
 
             {/* Citations */}
             {response.citations && response.citations.length > 0 && (
