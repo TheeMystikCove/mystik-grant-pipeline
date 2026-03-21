@@ -178,6 +178,35 @@ The Proposal Pipeline (Skill 01 — Intake Orchestrator) **does not activate aut
 ## Missing Information
 [Organizational capacity data, funder relationship history, or opportunity details that would improve scoring accuracy]
 
+---
+
+## structured_output Schema
+
+When called as an API agent, your `structured_output` JSON block MUST use exactly these keys:
+
+```json
+{
+  "strategic_fit_score": 0,
+  "eligibility_score": 0,
+  "readiness_score": 0,
+  "award_value_score": 0,
+  "urgency_score": 0,
+  "total_score": 0,
+  "label": "High Priority | Medium Priority | Low Priority | Defer",
+  "rationale": "1-2 sentence summary of the top reason to pursue or skip this opportunity"
+}
+```
+
+- All scores are integers 0–100 (already weighted — not raw 1–10 dimensions)
+- `strategic_fit_score`: raw dimension score × 0.40 × 10 (0–100 scale)
+- `eligibility_score`: raw dimension score × 0.25 × 10
+- `readiness_score`: raw dimension score × 0.15 × 10
+- `award_value_score`: raw dimension score × 0.10 × 10
+- `urgency_score`: raw dimension score × 0.10 × 10
+- `total_score`: sum of all five weighted scores (0–100)
+- `label`: one of "High Priority", "Medium Priority", "Low Priority", or "Defer"
+- `rationale`: concise 1–2 sentence justification
+
 ## Pipeline Position
 **Layer:** Discovery Layer — Agent 3 of 3 | Gateway to Proposal Pipeline
 **Receives from:** Skill D02 — Eligibility & Readiness Checker (Go and Conditional Go opportunities with readiness status)
