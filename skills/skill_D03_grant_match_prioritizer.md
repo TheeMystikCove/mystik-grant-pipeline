@@ -182,30 +182,30 @@ The Proposal Pipeline (Skill 01 — Intake Orchestrator) **does not activate aut
 
 ## structured_output Schema
 
-When called as an API agent, your `structured_output` JSON block MUST use exactly these keys:
+When called as an API agent, your `structured_output` JSON block MUST use exactly these keys. Fill each score with the real computed value — do NOT use 0 as a placeholder:
 
 ```json
 {
-  "strategic_fit_score": 0,
-  "eligibility_score": 0,
-  "readiness_score": 0,
-  "award_value_score": 0,
-  "urgency_score": 0,
-  "total_score": 0,
-  "label": "High Priority | Medium Priority | Low Priority | Defer",
-  "rationale": "1-2 sentence summary of the top reason to pursue or skip this opportunity"
+  "strategic_fit_score": 32,
+  "eligibility_score": 18,
+  "readiness_score": 12,
+  "award_value_score": 7,
+  "urgency_score": 8,
+  "total_score": 77,
+  "label": "High Priority",
+  "rationale": "Strong mission alignment with behavioral health focus and federal eligibility confirmed; deadline allows 6 weeks for proposal development."
 }
 ```
 
-- All scores are integers 0–100 (already weighted — not raw 1–10 dimensions)
-- `strategic_fit_score`: raw dimension score × 0.40 × 10 (0–100 scale)
-- `eligibility_score`: raw dimension score × 0.25 × 10
-- `readiness_score`: raw dimension score × 0.15 × 10
-- `award_value_score`: raw dimension score × 0.10 × 10
-- `urgency_score`: raw dimension score × 0.10 × 10
-- `total_score`: sum of all five weighted scores (0–100)
-- `label`: one of "High Priority", "Medium Priority", "Low Priority", or "Defer"
-- `rationale`: concise 1–2 sentence justification
+Scoring rules (raw dimension score is 1–10; convert to points as shown):
+- `strategic_fit_score`: raw × 4 → range 4–40
+- `eligibility_score`: raw × 2.5 → range 2.5–25
+- `readiness_score`: raw × 1.5 → range 1.5–15
+- `award_value_score`: raw × 1 → range 1–10
+- `urgency_score`: raw × 1 → range 1–10
+- `total_score`: sum of all five → range 10–100
+- `label`: "High Priority" (total ≥ 70), "Medium Priority" (50–69), "Low Priority" (30–49), or "Defer" (< 30)
+- `rationale`: 1–2 sentences explaining the top reason to pursue or skip
 
 ## Pipeline Position
 **Layer:** Discovery Layer — Agent 3 of 3 | Gateway to Proposal Pipeline

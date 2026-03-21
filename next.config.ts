@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
     "/api/agents/run": ["./skills/**"],
     "/api/agents/run-pipeline": ["./skills/**"],
     "/api/opportunities/search": ["./skills/**"],
+    "/api/opportunities/rescore": ["./skills/**"],
     "/api/proposals/[id]/download": ["./node_modules/docx/**"],
   },
 };
