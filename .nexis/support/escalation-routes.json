@@ -1,0 +1,86 @@
+{
+  "_meta": {
+    "description": "Grant Engine escalation routing — maps issue categories to agents and human contacts",
+    "subnetwork": "grant-engine",
+    "version": "1.0",
+    "last_updated": "2026-03-22"
+  },
+  "routes": {
+    "navigation_issue": {
+      "primary_agent": "nx.atlas",
+      "secondary_agent": "nx.grant",
+      "human_contact": "grant-staff-support",
+      "notes": "Most navigation issues involve finding grant records, document templates, or pipeline status views"
+    },
+    "content_issue": {
+      "primary_agent": "nx.grant",
+      "secondary_agent": null,
+      "human_contact": "grant-staff-support",
+      "notes": "Grant record content unclear, scoring criteria confusing, document template questions"
+    },
+    "permissions_issue": {
+      "primary_agent": "nx.ops",
+      "secondary_agent": null,
+      "human_contact": "grant-admin-queue",
+      "notes": "Grant Engine access, document visibility, pipeline stage gating"
+    },
+    "workflow_error": {
+      "primary_agent": "nx.grant",
+      "secondary_agent": "nx.ops",
+      "human_contact": "grant-staff-support",
+      "notes": "Pipeline workflow errors, application submission issues, scoring tool errors"
+    },
+    "data_sync_issue": {
+      "primary_agent": "nx.remedy",
+      "secondary_agent": null,
+      "human_contact": "grant-admin-queue",
+      "notes": "Grant status not reflecting correctly, eligibility flags not updating, pipeline data mismatch"
+    },
+    "technical_bug": {
+      "primary_agent": "nx.remedy",
+      "secondary_agent": null,
+      "human_contact": "grant-admin-queue",
+      "notes": "Broken UI in Grant Engine, unresponsive scoring tool, error messages"
+    },
+    "access_denial": {
+      "primary_agent": "nx.ops",
+      "secondary_agent": null,
+      "human_contact": "grant-admin-queue",
+      "notes": "Explicit denial when accessing grant record, template, or pipeline tool"
+    },
+    "account_issue": {
+      "primary_agent": "nx.ops",
+      "secondary_agent": null,
+      "human_contact": "grant-admin-queue",
+      "notes": "Grant Engine authorization missing, subnetwork not in authorized list"
+    },
+    "companion_confusion": {
+      "primary_agent": "nx.atlas",
+      "secondary_agent": null,
+      "human_contact": "grant-staff-support",
+      "notes": "Member confused about NEXIS guidance in the Grant Engine context"
+    },
+    "onboarding_stuck": {
+      "primary_agent": "nx.grant",
+      "secondary_agent": "nx.atlas",
+      "human_contact": "grant-staff-support",
+      "notes": "Member or staff unable to complete Grant Engine activation or initial orientation"
+    },
+    "unresolved_support_request": {
+      "primary_agent": "nx.remedy",
+      "secondary_agent": null,
+      "human_contact": "grant-admin-queue",
+      "notes": "All agents exhausted — escalate to human admin"
+    }
+  },
+  "human_contacts": {
+    "grant-staff-support": {
+      "description": "Grant Engine operations staff support — STAFF_SPECIALIST tier",
+      "response_target": "Same business day"
+    },
+    "grant-admin-queue": {
+      "description": "Grant Engine admin operations — ADMIN_OPERATIONS tier",
+      "response_target": "Same business day"
+    }
+  }
+}

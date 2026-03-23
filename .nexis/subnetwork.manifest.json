@@ -1,0 +1,58 @@
+{
+  "_meta": {
+    "description": "Grant Engine subnetwork manifest — full capability and integration declaration",
+    "subnetwork": "grant-engine",
+    "version": "1.0",
+    "last_updated": "2026-03-22",
+    "managed_by": "nx.chronicle"
+  },
+  "subnetwork_id": "grant-engine",
+  "net_code": "GRT",
+  "display_name": "Mystik Grant Engine",
+  "status": "active",
+  "identity_layer": {
+    "mysk_id_enabled": true,
+    "identity_layer_version": "1.0",
+    "data_access_tier": 3,
+    "mysk_id_generation_event": "first_researcher_registration"
+  },
+  "nexis_integration": {
+    "nexis_mode_default": "admin_copilot",
+    "companion_features": [
+      "admin_copilot"
+    ],
+    "config_file": ".nexis/nexis.config.json",
+    "access_grants_file": ".nexis/access-grants.json",
+    "handshake_spec_file": ".nexis/member-handshake-spec.md"
+  },
+  "support": {
+    "role_tier_support_enabled": true,
+    "context_aware_support_enabled": true,
+    "support_dir": ".nexis/support/",
+    "sop_files": {
+      "sop.member": ".nexis/support/sop.member.md",
+      "sop.staff": ".nexis/support/sop.staff.md",
+      "sop.admin": ".nexis/support/sop.admin.md"
+    },
+    "escalation_routes_file": ".nexis/support/escalation-routes.json",
+    "support_scope_file": ".nexis/support/support-scope.json",
+    "primary_support_agents": ["nx.atlas", "nx.grant", "nx.remedy"],
+    "human_contacts": ["grant-staff-support", "grant-admin-queue"]
+  },
+  "demo": {
+    "demo_member_id": "MYSK-D3M-001-001",
+    "demo_handshake_file": ".nexis/demo-handshake.json",
+    "demo_member_summary_file": ".nexis/demo-member-summary.md"
+  },
+  "updates": {
+    "update_watch_file": ".nexis/updates/update-watch.json",
+    "local_update_log_file": ".nexis/updates/local-update-log.md",
+    "local_release_notes_file": ".nexis/updates/local-release-notes.md",
+    "incidents_file": ".nexis/updates/incidents.md"
+  },
+  "registry_references": {
+    "mysk_id_registry": "NEXIS_AI_CORE/identity/registry/mysk-id-registry.json",
+    "subnetwork_registry": "NEXIS_AI_CORE/identity/registry/subnetwork-registry.json",
+    "access_matrix": "NEXIS_AI_CORE/identity/registry/access-matrix.json"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "subnetwork_id": "grant-engine",
+  "net_code": "GRT",
+  "update_tracking_enabled": true,
+  "local_release_notes_enabled": true,
+  "incident_tracking_enabled": true,
+  "sync_to_core": true,
+  "watch_categories": [
+    "identity-model-change",
+    "schema-change",
+    "integration-change",
+    "feature",
+    "fix",
+    "hotfix",
+    "incident",
+    "rollback"
+  ],
+  "sync_target": "NEXIS_AI_CORE/updates/registry/update-events.index.json",
+  "chronicle_agent": "nx.chronicle",
+  "last_reviewed": "2026-03-22"
+}

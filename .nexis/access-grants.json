@@ -1,0 +1,28 @@
+{
+  "_meta": {
+    "description": "Data access grants for the Mystik Grant Engine — what this subnetwork may read from member profiles",
+    "version": "1.0",
+    "last_updated": "2026-03-22",
+    "reference": "NEXIS_AI_CORE/identity/knowledge-boundaries.md"
+  },
+  "subnetwork_id": "grant-engine",
+  "granted_data_types": {
+    "mysk_id": "read",
+    "display_name": "read",
+    "pronouns": "none",
+    "contact_email": "none",
+    "intake_responses": "none",
+    "learning_preferences": "none",
+    "academy_overlay": "none",
+    "hq_overlay": "none",
+    "grant_overlay": "full",
+    "companion_context_full": "none",
+    "resonance_tags": "none",
+    "relationship_depth_tier": "none",
+    "open_threads": "none",
+    "lifecycle_state": "read",
+    "engagement_log_own": "read",
+    "engagement_log_other": "none"
+  },
+  "notes": "Grant Engine receives its own researcher overlay in full. It has the most restricted access of the three subnetworks — no companion context, no Academy data, no HQ data. Its NEXIS is operational (grant research), not relational."
+}

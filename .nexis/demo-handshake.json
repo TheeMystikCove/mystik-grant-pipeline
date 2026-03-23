@@ -1,0 +1,37 @@
+{
+  "_meta": {
+    "description": "Demo companion handshake payload for MYSK-D3M-001-001 in the Grant Engine context",
+    "member": "Alex Rivera (they/them)",
+    "subnetwork": "grant-engine",
+    "assembled_at": "2026-03-22T00:00:00Z",
+    "note": "Demo member — not a real grant researcher. Shows the minimal grant-engine view."
+  },
+  "mysk_id": "MYSK-D3M-001-001",
+  "display_name": "Alex Rivera",
+  "preferred_name": "Alex",
+  "pronouns": null,
+  "lifecycle_state": "active",
+  "requesting_subnetwork": "grant-engine",
+  "depth_tier": null,
+  "resonance_tags": [],
+  "tone_calibration": null,
+  "open_threads_summary": [],
+  "overlay_summary": {
+    "enrollment_state": "not_enrolled",
+    "active_item_title": null,
+    "progress_percent": 0,
+    "eligible": false
+  },
+  "learning_preferences": null,
+  "assembled_at": "2026-03-22T00:00:00Z",
+  "support_context": {
+    "requester_access_tier": 4,
+    "active_surface": "member_frontend",
+    "active_tool": "grant_opportunity_list",
+    "support_mode": "member_self_service",
+    "sop_scope_allowed": ["sop.member"],
+    "escalation_eligible": true,
+    "escalation_path": ["nx.atlas", "nx.grant", "grant-staff-support"]
+  },
+  "_note": "Grant Engine receives the most minimal slice: MYSK-ID, display name, lifecycle state, and grant overlay only. No companion data, no Academy data, no pronouns."
+}

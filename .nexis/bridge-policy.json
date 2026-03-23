@@ -1,0 +1,18 @@
+{
+  "subnetwork_id": "grant-engine",
+  "mainframe_bridge_supported": true,
+  "founder_sovereign_only": true,
+  "local_context_preserved": true,
+  "logs_required": true,
+  "bridge_surfaces": [
+    "mainframe_bridge",
+    "sovereign_channel",
+    "founder_governance_panel",
+    "cross_subnetwork_console",
+    "founder_override_review",
+    "succession_control"
+  ],
+  "last_reviewed": "2026-03-22",
+  "governed_by": "identity/mainframe-bridge-model.md",
+  "notes": "grant-engine supports the NEXIS Mainframe Bridge for FOUNDER_SOVEREIGN identity only. Local subnetwork context is preserved when bridge mode is active. All bridge actions are logged."
+}

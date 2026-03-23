@@ -1,0 +1,46 @@
+{
+  "_meta": {
+    "description": "Grant Engine support scope — defines which SOP files are exposed to each role tier",
+    "subnetwork": "grant-engine",
+    "version": "1.0",
+    "last_updated": "2026-03-22",
+    "reference": "NEXIS_AI_CORE/contracts/sop-integration-contract.md"
+  },
+  "sop_access_by_tier": {
+    "MEMBER": {
+      "access_tier": 4,
+      "authorized_sops": ["sop.member"],
+      "companion_mode": "member_self_service",
+      "escalation_eligible": true,
+      "escalation_path": ["nx.atlas", "nx.grant", "grant-staff-support"]
+    },
+    "STAFF_SPECIALIST": {
+      "access_tier": 3,
+      "authorized_sops": ["sop.member", "sop.staff"],
+      "companion_mode": "staff_operational",
+      "escalation_eligible": true,
+      "escalation_path": ["nx.grant", "nx.ops", "grant-admin-queue"]
+    },
+    "ADMIN_OPERATIONS": {
+      "access_tier": 2,
+      "authorized_sops": ["sop.member", "sop.staff", "sop.admin"],
+      "companion_mode": "admin_full",
+      "escalation_eligible": true,
+      "escalation_path": ["nx.ops", "nx.remedy", "executive-review"]
+    },
+    "EXECUTIVE_CORE": {
+      "access_tier": 1,
+      "authorized_sops": ["sop.member", "sop.staff", "sop.admin"],
+      "companion_mode": "executive_governance",
+      "escalation_eligible": true,
+      "escalation_path": ["nx.remedy", "peer-review"]
+    }
+  },
+  "support_mode_descriptions": {
+    "member_self_service": "COMPANION uses sop.member.md only. No pipeline configuration references, no scoring criteria details, no internal workflow names.",
+    "staff_operational": "COMPANION uses sop.member + sop.staff. May reference internal grant pipeline workflows and tools available to the staff role.",
+    "admin_full": "COMPANION uses all three SOPs. May reference approved admin procedures including eligibility management and pipeline configuration.",
+    "executive_governance": "COMPANION uses all SOPs with no restrictions. Full governance context including policy override authority available."
+  },
+  "surface_access_reference": ".nexis/access/surface-map.json"
+}

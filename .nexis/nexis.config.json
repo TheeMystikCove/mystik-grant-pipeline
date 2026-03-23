@@ -1,0 +1,30 @@
+{
+  "_meta": {
+    "description": "NEXIS subnetwork configuration for the Mystik Grant Engine",
+    "version": "1.0",
+    "last_updated": "2026-03-22",
+    "reference": "NEXIS_AI_CORE/identity/README.md"
+  },
+  "subnetwork_id": "grant-engine",
+  "net_code": "GRT",
+  "display_name": "Mystik Grant Engine",
+  "description": "Grant research and pipeline management — opportunity scoring and tracking",
+  "nexis_mode_default": "admin_copilot",
+  "mysk_id_enabled": true,
+  "identity_layer_version": "1.0",
+  "data_access_tier": 3,
+  "companion_features": [
+    "admin_copilot"
+  ],
+  "page_mode_routing": {
+    "default": "admin_copilot",
+    "opportunities": "admin_copilot",
+    "scoring": "admin_copilot",
+    "pipeline": "admin_copilot",
+    "research": "admin_copilot"
+  },
+  "mysk_id_generation": {
+    "on_event": "first_researcher_registration",
+    "sequence_source": "NEXIS_AI_CORE/identity/registry/mysk-id-registry.json"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "subnetwork_id": "grant-engine",
+  "visible_to_founder_sovereign": true,
+  "hidden_from_members": true,
+  "hidden_from_staff_by_default": true,
+  "hidden_from_admin_by_default": true,
+  "bridge_surfaces": [
+    "mainframe_bridge",
+    "sovereign_channel",
+    "founder_governance_panel",
+    "cross_subnetwork_console",
+    "founder_override_review",
+    "succession_control"
+  ],
+  "surface_visibility_rule": "All 6 bridge surfaces are visible ONLY to FOUNDER_SOVEREIGN within bridge mode. No other tier has visibility. No Companion output references these surfaces in non-sovereign sessions.",
+  "last_reviewed": "2026-03-22"
+}

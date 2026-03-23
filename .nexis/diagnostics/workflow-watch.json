@@ -1,0 +1,15 @@
+{
+  "subnetwork_id": "grant-engine",
+  "diagnostic_tracking_enabled": true,
+  "duplicate_tracking_enabled": true,
+  "access_leak_tracking_enabled": true,
+  "support_conflict_tracking_enabled": true,
+  "sync_to_core": true,
+  "core_diagnostic_ref": "NEXIS_AI_CORE/diagnostics/registry/",
+  "last_reviewed": "2026-03-22",
+  "open_findings": 1,
+  "open_finding_ids": ["PRIORITY-GRT-001"],
+  "resolved_findings": 3,
+  "next_review_trigger": "role column added, new pipeline stage, or new API route",
+  "notes": "LEAK-001 (pipeline no auth) and LEAK-003 (no middleware) resolved. PRIORITY-GRT-001 is open: role column needed in users table to enable admin/backend surface access for grant directors. Until then, all backend routes correctly blocked."
+}

@@ -1,0 +1,118 @@
+{
+  "subnetwork_id": "grant-engine",
+  "label": "Grant Engine",
+  "generated": "2026-03-22",
+  "governed_by": "NEXIS_AI_CORE/identity/permissions/registry/master-access-matrix.json",
+  "surfaces": [
+    {
+      "surface_id": "member_frontend",
+      "label": "Grant Applicant Dashboard",
+      "surface_class": "MEMBER_FRONT",
+      "member_visible": true,
+      "staff_visible": true,
+      "admin_visible": true,
+      "executive_visible": true,
+      "companion_may_reference": true,
+      "notes": "Primary applicant-facing interface for grant-engine."
+    },
+    {
+      "surface_id": "companion_guidance",
+      "label": "Grant Companion",
+      "surface_class": "COMPANION_GUIDANCE",
+      "member_visible": true,
+      "staff_visible": true,
+      "admin_visible": true,
+      "executive_visible": true,
+      "companion_may_reference": true,
+      "notes": "Companion guidance for grant applicants and coordinators."
+    },
+    {
+      "surface_id": "application_dashboard",
+      "label": "Application Dashboard",
+      "surface_class": "MEMBER_FRONT",
+      "member_visible": true,
+      "staff_visible": true,
+      "admin_visible": true,
+      "executive_visible": true,
+      "companion_may_reference": true,
+      "notes": "Grant application status and management — applicant-facing."
+    },
+    {
+      "surface_id": "document_upload_flow",
+      "label": "Document Upload Flow",
+      "surface_class": "MEMBER_FRONT",
+      "member_visible": true,
+      "staff_visible": true,
+      "admin_visible": true,
+      "executive_visible": true,
+      "companion_may_reference": true,
+      "notes": "Grant document submission surface — applicant-facing."
+    },
+    {
+      "surface_id": "status_tracker",
+      "label": "Application Status Tracker",
+      "surface_class": "MEMBER_FRONT",
+      "member_visible": true,
+      "staff_visible": true,
+      "admin_visible": true,
+      "executive_visible": true,
+      "companion_may_reference": true,
+      "notes": "Application status tracking — applicant-facing."
+    },
+    {
+      "surface_id": "local_support_tools",
+      "label": "Grant Support Tools",
+      "surface_class": "ADMIN_OPERATIONAL",
+      "member_visible": false,
+      "staff_visible": true,
+      "admin_visible": true,
+      "executive_visible": true,
+      "companion_may_reference": false,
+      "notes": "Internal support queue for grant-engine applicant issues — staff+ only."
+    },
+    {
+      "surface_id": "local_admin_tools",
+      "label": "Grant Admin Tools",
+      "surface_class": "ADMIN_OPERATIONAL",
+      "member_visible": false,
+      "staff_visible": false,
+      "admin_visible": true,
+      "executive_visible": true,
+      "companion_may_reference": false,
+      "notes": "Admin interface for grant management and coordination workflows. Staff observe only."
+    },
+    {
+      "surface_id": "template_manager",
+      "label": "Template Manager",
+      "surface_class": "ADMIN_OPERATIONAL",
+      "member_visible": false,
+      "staff_visible": false,
+      "admin_visible": true,
+      "executive_visible": true,
+      "companion_may_reference": false,
+      "notes": "Grant-specific template management — admin+ only. MEMBER and STAFF denied."
+    },
+    {
+      "surface_id": "backend_ops",
+      "label": "Grant Backend Ops",
+      "surface_class": "BACKEND_OPERATIONAL",
+      "member_visible": false,
+      "staff_visible": false,
+      "admin_visible": true,
+      "executive_visible": true,
+      "companion_may_reference": false,
+      "notes": "Backend operational access — admin and executive only. MEMBER and STAFF hard denied."
+    },
+    {
+      "surface_id": "local_incidents",
+      "label": "Grant Incident Records",
+      "surface_class": "ADMIN_OPERATIONAL",
+      "member_visible": false,
+      "staff_visible": true,
+      "admin_visible": true,
+      "executive_visible": true,
+      "companion_may_reference": false,
+      "notes": "Incident tracking for grant-engine — staff may view/observe, admin may manage."
+    }
+  ]
+}

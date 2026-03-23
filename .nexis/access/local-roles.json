@@ -1,0 +1,90 @@
+{
+  "subnetwork_id": "grant-engine",
+  "label": "Grant Engine",
+  "generated": "2026-03-22",
+  "governed_by": "NEXIS_AI_CORE/identity/permissions/registry/local-role-registry.json",
+  "roles": [
+    {
+      "role_id": "grt-grant-director",
+      "label": "Grant Director",
+      "recommended_global_tiers": ["EXECUTIVE_CORE", "ADMIN_OPERATIONS"],
+      "allowed_surfaces": [
+        "member_frontend", "companion_guidance", "application_dashboard", "document_upload_flow",
+        "status_tracker", "local_support_tools", "local_admin_tools", "template_manager",
+        "backend_ops", "local_incidents"
+      ],
+      "restricted_surfaces": [],
+      "escalation_authority": "all",
+      "notes": "Leads grant operations. Full access within EXECUTIVE_CORE or ADMIN_OPERATIONS ceiling."
+    },
+    {
+      "role_id": "grt-grant-coordinator",
+      "label": "Grant Coordinator",
+      "recommended_global_tiers": ["ADMIN_OPERATIONS"],
+      "allowed_surfaces": [
+        "member_frontend", "companion_guidance", "application_dashboard", "document_upload_flow",
+        "status_tracker", "local_support_tools", "local_admin_tools", "template_manager",
+        "backend_ops", "local_incidents"
+      ],
+      "restricted_surfaces": [],
+      "escalation_authority": "staff_to_admin",
+      "notes": "Manages grant applications and coordination workflows. Full admin access within ADMIN_OPERATIONS ceiling."
+    },
+    {
+      "role_id": "grt-reviewer",
+      "label": "Reviewer",
+      "recommended_global_tiers": ["STAFF_SPECIALIST", "ADMIN_OPERATIONS"],
+      "allowed_surfaces": [
+        "member_frontend", "companion_guidance", "application_dashboard",
+        "document_upload_flow", "local_support_tools", "local_incidents"
+      ],
+      "restricted_surfaces": ["local_admin_tools", "template_manager", "backend_ops", "status_tracker"],
+      "escalation_authority": "member_to_staff",
+      "notes": "Reviews grant applications. Access to application materials and support tools. No admin tools or templates."
+    },
+    {
+      "role_id": "grt-document-support",
+      "label": "Document Support",
+      "recommended_global_tiers": ["STAFF_SPECIALIST"],
+      "allowed_surfaces": [
+        "member_frontend", "companion_guidance", "application_dashboard",
+        "document_upload_flow", "local_support_tools"
+      ],
+      "restricted_surfaces": [
+        "local_admin_tools", "template_manager", "backend_ops",
+        "local_incidents", "status_tracker"
+      ],
+      "escalation_authority": "member_to_staff",
+      "notes": "Assists with grant documentation — staff tier. Core support tools only."
+    },
+    {
+      "role_id": "grt-applicant",
+      "label": "Applicant",
+      "recommended_global_tiers": ["MEMBER"],
+      "allowed_surfaces": [
+        "member_frontend", "companion_guidance", "application_dashboard",
+        "document_upload_flow", "status_tracker"
+      ],
+      "restricted_surfaces": [
+        "local_support_tools", "local_admin_tools", "template_manager",
+        "backend_ops", "local_incidents"
+      ],
+      "escalation_authority": "none",
+      "notes": "Active grant applicant — full access to all applicant-facing surfaces. Member tier ceiling applies."
+    },
+    {
+      "role_id": "grt-member",
+      "label": "Member",
+      "recommended_global_tiers": ["MEMBER"],
+      "allowed_surfaces": [
+        "member_frontend", "companion_guidance", "application_dashboard"
+      ],
+      "restricted_surfaces": [
+        "document_upload_flow", "status_tracker", "local_support_tools",
+        "local_admin_tools", "template_manager", "backend_ops", "local_incidents"
+      ],
+      "escalation_authority": "none",
+      "notes": "Base member role — not yet an active applicant. Limited to dashboard and Companion."
+    }
+  ]
+}
