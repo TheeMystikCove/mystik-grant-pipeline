@@ -1,5 +1,5 @@
 -- ─── Grant Engine — Projects + Project Opportunities ─────────────────────────
--- Migration: 004_projects_and_matches.sql
+-- Migration: 007_projects_and_matches.sql
 -- Run via: supabase db push  OR  paste into Supabase SQL editor
 
 -- ─── Projects ─────────────────────────────────────────────────────────────────

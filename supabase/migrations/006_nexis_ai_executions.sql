@@ -1,6 +1,6 @@
 -- NEXIS AI Executions — Execution Log Table
 -- Run this in the Supabase SQL editor before using the AI Gateway.
--- Migration: nexis_ai_executions
+-- Migration: 006_nexis_ai_executions.sql
 
 create table if not exists nexis_ai_executions (
   id                   uuid primary key default gen_random_uuid(),
