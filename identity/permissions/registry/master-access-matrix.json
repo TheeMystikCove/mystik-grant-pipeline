@@ -1,0 +1,150 @@
+{
+  "_meta": {
+    "description": "Grant-engine subnetwork access matrix — grant-engine-specific surfaces only",
+    "inherits": "nexis-core",
+    "scope": "grant-engine",
+    "version": "1.0",
+    "last_updated": "2026-04-18",
+    "authorized_by": "MYSK-J7M-4N2-X9Q",
+    "managed_by": "nx.OPS",
+    "note": "Defines access rules for grant-engine surfaces only. Core NEXIS surfaces are governed by NEXIS_AI_CORE/identity/permissions/registry/master-access-matrix.json"
+  },
+  "tiers": {
+    "EXECUTIVE_CORE": {
+      "description": "Founder sovereign — full access to all surfaces",
+      "local_roles": ["founder_admin"]
+    },
+    "ADMIN_OPERATIONS": {
+      "description": "Grant strategist and program leads — manage pipeline and proposals",
+      "local_roles": ["grant_strategist", "program_lead"]
+    },
+    "STAFF_SPECIALIST": {
+      "description": "Reviewers and ops assistants — read pipeline, limited writes",
+      "local_roles": ["reviewer", "ops_assistant"]
+    },
+    "MEMBER": {
+      "description": "Standard authenticated user — member-facing surfaces only",
+      "local_roles": []
+    }
+  },
+  "surfaces": {
+    "GRANT_DASHBOARD": {
+      "description": "Main dashboard, pipeline view, calendar",
+      "routes": ["/dashboard", "/pipeline", "/calendar"],
+      "min_tier": "MEMBER",
+      "access": {
+        "EXECUTIVE_CORE": "full",
+        "ADMIN_OPERATIONS": "full",
+        "STAFF_SPECIALIST": "full",
+        "MEMBER": "read_only"
+      }
+    },
+    "GRANT_OPPORTUNITIES": {
+      "description": "Opportunity discovery, search, scoring, and management",
+      "routes": ["/opportunities", "/api/opportunities"],
+      "min_tier": "MEMBER",
+      "access": {
+        "EXECUTIVE_CORE": "full",
+        "ADMIN_OPERATIONS": "full",
+        "STAFF_SPECIALIST": "read_only",
+        "MEMBER": "read_only"
+      }
+    },
+    "GRANT_PROJECTS": {
+      "description": "Project profiles, grant matching, architect conversations",
+      "routes": ["/projects", "/api/projects"],
+      "min_tier": "STAFF_SPECIALIST",
+      "access": {
+        "EXECUTIVE_CORE": "full",
+        "ADMIN_OPERATIONS": "full",
+        "STAFF_SPECIALIST": "full",
+        "MEMBER": "deny"
+      }
+    },
+    "GRANT_PROPOSALS": {
+      "description": "Proposal drafts, pipeline stages, download",
+      "routes": ["/proposals", "/api/proposals"],
+      "min_tier": "STAFF_SPECIALIST",
+      "access": {
+        "EXECUTIVE_CORE": "full",
+        "ADMIN_OPERATIONS": "full",
+        "STAFF_SPECIALIST": "read_only",
+        "MEMBER": "deny"
+      }
+    },
+    "GRANT_AGENTS": {
+      "description": "Agent invocation — single-agent and pipeline runs",
+      "routes": ["/api/agents/run", "/api/agents/run-pipeline"],
+      "min_tier": "STAFF_SPECIALIST",
+      "access": {
+        "EXECUTIVE_CORE": "full",
+        "ADMIN_OPERATIONS": "full",
+        "STAFF_SPECIALIST": "full",
+        "MEMBER": "deny"
+      },
+      "note": "/api/agents/run-pipeline is backend_ops — requires ADMIN_OPERATIONS minimum"
+    },
+    "GRANT_NEXIS_CHAT": {
+      "description": "NEXIS AI chat interface and agent API",
+      "routes": ["/api/nexis/chat", "/api/nexis/agent", "/api/nexis/invoke"],
+      "min_tier": "MEMBER",
+      "access": {
+        "EXECUTIVE_CORE": "full",
+        "ADMIN_OPERATIONS": "full",
+        "STAFF_SPECIALIST": "full",
+        "MEMBER": "full"
+      }
+    },
+    "GRANT_SCORING": {
+      "description": "Opportunity scoring — read and write. Internal weights never exposed to MEMBER tier.",
+      "routes": ["/api/nexis/scores", "/api/opportunities/scores", "/api/opportunities/rescore"],
+      "min_tier": "STAFF_SPECIALIST",
+      "access": {
+        "EXECUTIVE_CORE": "full",
+        "ADMIN_OPERATIONS": "full",
+        "STAFF_SPECIALIST": "read_only",
+        "MEMBER": "deny"
+      },
+      "hard_rule": "Internal scoring weights (strategic_fit_score, eligibility_score, readiness_score, award_value_score, urgency_score) must never be surfaced in member-facing output"
+    },
+    "GRANT_NOTION_SYNC": {
+      "description": "Notion pipeline sync — admin-facing integration",
+      "routes": ["/api/notion/sync"],
+      "min_tier": "ADMIN_OPERATIONS",
+      "access": {
+        "EXECUTIVE_CORE": "full",
+        "ADMIN_OPERATIONS": "full",
+        "STAFF_SPECIALIST": "deny",
+        "MEMBER": "deny"
+      }
+    },
+    "GRANT_OS_CANON": {
+      "description": "Canon registry admin view",
+      "routes": ["/os/canon", "/api/os/canon"],
+      "min_tier": "ADMIN_OPERATIONS",
+      "access": {
+        "EXECUTIVE_CORE": "full",
+        "ADMIN_OPERATIONS": "full",
+        "STAFF_SPECIALIST": "deny",
+        "MEMBER": "deny"
+      }
+    },
+    "GRANT_ADMIN": {
+      "description": "Account management, onboarding, organization settings",
+      "routes": ["/account", "/onboarding", "/os/agents", "/os/ai-console"],
+      "min_tier": "STAFF_SPECIALIST",
+      "access": {
+        "EXECUTIVE_CORE": "full",
+        "ADMIN_OPERATIONS": "full",
+        "STAFF_SPECIALIST": "limited",
+        "MEMBER": "deny"
+      }
+    }
+  },
+  "hard_limits": {
+    "no_eligibility_determinations": "System guides; humans decide eligibility. No route may return a definitive eligibility determination.",
+    "no_pipeline_mutation_by_member": "MEMBER tier routes are read-only. No pipeline data modification by member-facing routes.",
+    "no_scoring_weight_disclosure": "Internal scoring weights are never exposed to MEMBER tier in any response.",
+    "pipeline_status_informational_only": "Pipeline stage labels must be workflow stages only — never confidence signals or outcome predictions."
+  }
+}

@@ -76,7 +76,7 @@ export function OpportunitiesListClient({ opportunities }: Props) {
     setRescoring(true);
     setRescoreMsg("Scoring in progress…");
     try {
-      const res = await fetch("/api/opportunities/rescore", { method: "POST" });
+      const res = await fetch("/api/opportunities/scores", { method: "POST" });
       const data = await res.json();
       setRescoreMsg(data.message ?? `Scored ${data.scored} opportunities.`);
       router.refresh();

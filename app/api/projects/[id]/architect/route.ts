@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAnthropicClient } from "@/lib/claude/client";
 import { loadSkillPrompt } from "@/lib/claude/skills";
@@ -17,6 +18,10 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
   const { message } = (await req.json()) as { message: string };
 
@@ -24,10 +29,10 @@ export async function POST(
     return NextResponse.json({ error: "message is required" }, { status: 400 });
   }
 
-  const supabase = createAdminClient();
+  const db = createAdminClient();
 
   // Load current project state
-  const { data: project, error: fetchErr } = await supabase
+  const { data: project, error: fetchErr } = await db
     .from("projects")
     .select("title, description, program_area, target_population, estimated_budget, timeline, tags, conversation_history, architect_stage")
     .eq("id", id)
@@ -130,7 +135,7 @@ Respond in JSON format as specified in your skill instructions.`;
       updatePayload.initiative_brief = parsed.initiative_brief;
     }
 
-    await supabase.from("projects").update(updatePayload).eq("id", id);
+    await db.from("projects").update(updatePayload).eq("id", id);
 
     return NextResponse.json({
       reply,

@@ -1,13 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { callAgent } from "@/lib/claude/call-agent";
 
+// GET /api/projects/[id]/match-grants — return stored matches for this project
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const db = createAdminClient();
+
+  const { data, error } = await db
+    .from("project_opportunities")
+    .select("*, opportunity:opportunities(id, name, funder_name, program_area, award_min, award_max, deadline, geography, source_url)")
+    .eq("project_id", id)
+    .order("match_score", { ascending: false })
+    .limit(20);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ matches: data ?? [] });
+}
+
+// POST /api/projects/[id]/match-grants — run AI grant matching for this project
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { id } = await params;
-  const supabase = createAdminClient();
+  const db = createAdminClient();
 
   // Load project
   const { data: project } = await supabase
@@ -95,7 +124,7 @@ export async function POST(
     }));
 
   if (rows.length > 0) {
-    await supabase
+    await db
       .from("project_opportunities")
       .upsert(rows, { onConflict: "project_id,opportunity_id" });
   }

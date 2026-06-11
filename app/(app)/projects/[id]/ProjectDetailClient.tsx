@@ -112,7 +112,7 @@ export function ProjectDetailClient({ project, matchedGrants }: Props) {
     const data = await res.json() as { matched?: number };
     if (data.matched && data.matched > 0) {
       // Reload matched grants
-      const r = await fetch(`/api/projects/${project.id}/matches`);
+      const r = await fetch(`/api/projects/${project.id}/match-grants`);
       if (r.ok) {
         const d = await r.json() as { matches?: MatchedGrant[] };
         if (d.matches) setGrants(d.matches);

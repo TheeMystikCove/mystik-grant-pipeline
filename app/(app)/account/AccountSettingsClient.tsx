@@ -395,7 +395,7 @@ function GoogleCalendarTab({
 
   useEffect(() => {
     if (!googleConnected) return;
-    fetch("/api/google/calendars")
+    fetch("/api/calendar")
       .then((r) => r.json())
       .then((data) => {
         if (data.calendars) setCalendars(data.calendars);
@@ -407,7 +407,7 @@ function GoogleCalendarTab({
     setSyncStatus("syncing");
     setSyncResult(null);
     try {
-      const res = await fetch("/api/calendar/sync", { method: "POST" });
+      const res = await fetch("/api/calendar", { method: "POST" });
       const data = await res.json();
       setSyncResult(data);
       setSyncStatus(res.ok ? "done" : "error");

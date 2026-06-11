@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { createServerClient } from "@/lib/supabase/server";
 import type { AgentName } from "@/types";
 
@@ -8,10 +9,13 @@ export async function triggerAgent(formData: FormData) {
   const proposalProjectId = formData.get("proposal_project_id") as string;
   const agentName = formData.get("agent_name") as AgentName;
 
-  // Call the API route — keeps server action thin
+  // Forward session cookies so the auth guard on /api/agents/run passes
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore.getAll().map((c) => `${c.name}=${c.value}`).join("; ");
+
   const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/agents/run`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Cookie: cookieHeader },
     body: JSON.stringify({ proposalProjectId, agentName, input: {} }),
   });
 

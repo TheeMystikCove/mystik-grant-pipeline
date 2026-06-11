@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createServerClient } from "@/lib/supabase/server";
 import {
   syncProposalStatusToNotion,
@@ -52,9 +53,13 @@ export async function markSubmitted(formData: FormData) {
 export async function runFullPipeline(formData: FormData) {
   const proposalProjectId = formData.get("proposal_project_id") as string;
 
+  // Forward session cookies so the auth guard on /api/agents/run-pipeline passes
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore.getAll().map((c) => `${c.name}=${c.value}`).join("; ");
+
   const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/agents/run-pipeline`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Cookie: cookieHeader },
     body: JSON.stringify({ proposalProjectId }),
   });
 
