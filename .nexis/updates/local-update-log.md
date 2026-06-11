@@ -18,6 +18,8 @@ This document is the internal technical change record for the `grant-engine` sub
 
 | Version | Date | Type | Summary |
 |---------|------|------|---------|
+| 1.3.0 | 2026-06-10 | schema-change (low) | **Phase 0 Step 2 — migration renumber.** Two interleaved authoring lineages (grant core + NEXIS gateway tables) renumbered to linear single-DB sequence 001→007 (`provider_registry` before `model_registry`); unnumbered `nexis_ai_executions` → `006_`. All `if not exists`, manual SQL-editor apply, no CLI history — idempotent, no SQL/RLS/access-boundary change. Commit `3016f7a`. |
+| 1.2.0 | 2026-06-10 | integration-change (moderate) | **Phase 0 Step 1 — auth untangle.** Half-finished refactor (broken+uncommitted on main) resolved: NEXIS surface-gate merged INTO `proxy.ts` (Next 16 canonical), competing `middleware.ts` deleted, `surface-gate.ts` + `identity/master-access-matrix.json` + migration 004 landed, 7 dead routes removed. Surface-gate defaults no-role users → ADMIN_OPERATIONS (non-breaking single-org; tighten to MEMBER at Phase 1 role column). Build green. Gate 2 reviewed (nx.OPS/nx.QUILL). Commit `1bab8e3`, merged main `6b54daa`. |
 | 1.1.0 | 2026-03-22 | minor | nx.CHRONICLE update watch installed. `.nexis/updates/` initialized. |
 | 1.0.0 | 2026-03-22 | major | NEXIS Identity Layer integration. GRT net_code configured. `data_access_tier: 3` (most restricted). Grant overlay schema configured. Agent routing for score/research/chat/analysis operational. |
 
