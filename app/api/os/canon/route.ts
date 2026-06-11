@@ -1,8 +1,9 @@
 // GET /api/os/canon — Returns canon registry from NEXIS OS Supabase
 // Powers the Canon Admin page at /os/canon
 
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import { createClient as createServerClient } from "@/lib/supabase/server"
 
 function getNexisClient() {
   const url = process.env.NEXIS_SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""
@@ -11,7 +12,11 @@ function getNexisClient() {
   return createClient(url, key)
 }
 
-export async function GET() {
+export async function GET(_req: NextRequest) {
+  const supabase = await createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     const supabase = getNexisClient()
 

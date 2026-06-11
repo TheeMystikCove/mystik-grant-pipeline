@@ -1,13 +1,39 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import { upsertDeadlineEvent } from "@/lib/google/calendar";
+import { listCalendars, upsertDeadlineEvent } from "@/lib/google/calendar";
 import { formatCurrency } from "@/lib/utils";
 
+// GET /api/calendar — list user's Google Calendars
+export async function GET() {
+  const supabase = await createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: userRow } = await supabase
+    .from("users")
+    .select("google_refresh_token")
+    .eq("auth_user_id", user.id)
+    .single();
+
+  if (!userRow?.google_refresh_token) {
+    return NextResponse.json({ error: "Google Calendar not connected" }, { status: 400 });
+  }
+
+  try {
+    const calendars = await listCalendars(userRow.google_refresh_token);
+    return NextResponse.json({ calendars });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Failed to fetch calendars" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/calendar — sync grant deadlines to Google Calendar
 export async function POST() {
   const supabase = await createServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data: userRow } = await supabase
@@ -17,10 +43,7 @@ export async function POST() {
     .single();
 
   if (!userRow?.google_refresh_token) {
-    return NextResponse.json(
-      { error: "Google Calendar not connected" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Google Calendar not connected" }, { status: 400 });
   }
 
   const { data: opportunities } = await supabase
@@ -35,9 +58,7 @@ export async function POST() {
 
   for (const opp of opportunities ?? []) {
     try {
-      const date = opp.deadline.includes("T")
-        ? opp.deadline.split("T")[0]
-        : opp.deadline;
+      const date = opp.deadline.includes("T") ? opp.deadline.split("T")[0] : opp.deadline;
       const description = [
         `Funder: ${opp.funder_name}`,
         opp.award_max ? `Award: ${formatCurrency(opp.award_max)}` : null,
